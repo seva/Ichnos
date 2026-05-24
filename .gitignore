@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# venv
+.venv/
+venv/
+env/
+
+# Local config
+.env
+.envrc
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Corpus working files (manifest is committed; fetched bodies are not)
+corpus/raw/
+corpus/features.parquet
+
+# Models
+detector/model.pkl
+detector/*.pkl
