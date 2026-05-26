@@ -11,7 +11,7 @@ Must complete before any ingestion, feature extraction, or model code.
 - [ ] For each Mythos advisory, identify candidate controls (same maintainer, ±90 days, no Glasswing or Anthropic credit) and record in `docs/control-candidates.md`
 - [ ] Document NVD API authentication, rate limits, and CVE description retrieval in `docs/nvd-api.md`
 - [ ] Document the GHSA database query interface and advisory text extraction pattern in `docs/ghsa-api.md`
-- [ ] Run a stylometric power analysis: minimum corpus size to detect a small (Cohen's d=0.3), medium (0.5), and large (0.8) effect on Burrows' Delta with α=0.05, power=0.8; record in `docs/power-analysis.md`
+- [x] Run a stylometric power analysis: minimum corpus size to detect a small (Cohen's d=0.3), medium (0.5), and large (0.8) effect on Burrows' Delta with α=0.05, power=0.8; record in `docs/power-analysis.md`
 - [ ] Decide and document text-scope policy: formal CVE/GHSA description only, or include maintainer commit messages, or include Anthropic-authored advisory text from `red.anthropic.com`. Record decision and rationale in `docs/text-scope.md`
 
 **Outputs:** `docs/dashboard-api.md`, `docs/mythos-advisories.md`, `docs/control-candidates.md`, `docs/nvd-api.md`, `docs/ghsa-api.md`, `docs/power-analysis.md`, `docs/text-scope.md` committed to `docs/`.
