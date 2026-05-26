@@ -7,7 +7,7 @@
 Must complete before any ingestion, feature extraction, or model code.
 
 - [x] Document the Anthropic Glasswing CVD dashboard interface (URL, response format, pagination, rate limits, whether advisory text is returned or only IDs) in `docs/dashboard-api.md`
-- [ ] Enumerate Mythos-credited disclosures from the oss-sec mailing list (Alan Coopersmith threads, May 2026 onward) and record advisory list with URL, maintainer, CVE/GHSA ID, disclosure date in `docs/mythos-advisories.md`
+- [x] Enumerate Mythos-credited disclosures from the oss-sec mailing list (Alan Coopersmith threads, May 2026 onward) and record advisory list with URL, maintainer, CVE/GHSA ID, disclosure date in `docs/mythos-advisories.md`
 - [ ] For each Mythos advisory, identify candidate controls (same maintainer, ±90 days, no Glasswing or Anthropic credit) and record in `docs/control-candidates.md`
 - [ ] Document NVD API authentication, rate limits, and CVE description retrieval in `docs/nvd-api.md`
 - [ ] Document the GHSA database query interface and advisory text extraction pattern in `docs/ghsa-api.md`
