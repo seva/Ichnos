@@ -17,7 +17,12 @@ Established 2026-09-15. Strategy artifact: the ladder this project climbs. Orien
 | L5 | Web surfaces consume the same context: browser-based interfaces retrieve operator context on prompt, scope-limited by consumer identity | AGA adapter lineage (contract only — its primary-session design is forbidden by the Host Isolation invariant) |
 | L6 | The engine is operator-portable: any sanctioned MCP client on any machine retrieves this operator's context on prompt, with the isolation and HITL guarantees intact | — |
 | L7 | Multi-operator: the engine generalizes beyond its first operator — sanctioned consumers retrieve *any enrolled operator's* context under the same guarantees, scoped per consumer identity | — |
-| L8 (universal) | The context layer for agentic computing: agent sessions anywhere arrive context-primed as a native property of the stack; the engine's guarantees (precedence, isolation, HITL, sanction) are the standard the layer enforces | — |
+| L8 | The context layer for agentic computing: agent sessions anywhere arrive context-primed as a native property of the stack; the engine's guarantees (precedence, isolation, HITL, sanction) are the standard the layer enforces | — |
+| L9 (planetary) | Civilizational infrastructure: every institution and machine is context-primed on prompt, cross-operator and cross-jurisdiction; each operator's context remains self-owned (sovereignty preserved by the sanction guarantee, not by geography) | — |
+| L10 (interplanetary/interstellar) | Light-lag-tolerant context transport: mirrors at each settlement serve prompt-latency reads while provenance-verified state reconciles across partitions; sanction chains and credential lifetimes engineered for decades-to-centuries horizons; self-verifying context state (hash-committed) travels where trust cannot precede it | — |
+| L11 (galactic civilizational — universal) | The layer serves any cognitive substrate — biological, machine, or other — as the standard way intelligence inquires after its own and others' traces: maximal reach (any asker), maximal flexibility (any substrate, any physics that permits communication), the four guarantees as the enforcement standard at every scale | — |
+
+Rungs beyond L8 are far positions — heuristic shapes bounding the direction of expansion, tagged as such (profile, not total). Orient measures only against the next rung; the galactic rungs price nothing into today's steps. Where physics removes response — beyond any possible echo, no correction can arrive — the filter applies at its largest: those are End/Unreachable positions, not markets.
 
 ---
 
@@ -28,6 +33,7 @@ Established 2026-09-15. Strategy artifact: the ladder this project climbs. Orien
 - **HITL coverage** — every auth checkpoint class the fallback can hit (2FA, CAPTCHA, login) has a defined teleoperation path.
 - **Client breadth** — one protocol (MCP), any consumer; consumer identity scopes what context is served.
 - **Trigger semantics** — "on prompt" is a defined surface: the MCP tool contract states when context is fresh, when it is re-read, and what staleness means per channel.
+- **Guarantee portability** — the four guarantees hold at every rung; each rung's expansion changes reach and substrate, never the enforcement standard. Scale never purchases exemption.
 
 ---
 
@@ -38,6 +44,7 @@ Established 2026-09-15. Strategy artifact: the ladder this project climbs. Orien
 - **Fallback hijack** — a screen-driving executor that attaches to the primary session destroys operator trust irrecoverably; defense is structural isolation (VM/display boundary), not process discipline.
 - **Malicious surface** — a web surface requesting context may be adversarial; consumer identity and per-consumer scoping are the boundary, enforced at the MCP server.
 - **Drift** — external APIs change shape, walled gardens change DOM/auth flows; adapters are isolated modules (ARCHITECTURE.md, Isolation of fragility) so drift burns one module, not the engine.
+- **Scale-band threats** — planetary: sovereignty conflicts and jurisdictional capture of the sanction layer. Interplanetary/interstellar: partition (split-brain context reads) and light-lag making correction impossible in real time — the regimes where responses stop existing are handled structurally (no commitment whose failure requires a check that may never fire), not by cadence. Galactic: substrate-strange adversaries — intelligences whose failure modes are not modeled here; the defense is the same as at L1: sanctions enforced at the boundary, isolation enforced in the substrate, nothing trusted on behavior.
 
 ---
 
@@ -63,7 +70,7 @@ Established 2026-09-15. Strategy artifact: the ladder this project climbs. Orien
 
 ## Terminal form
 
-Manual context assembly for agent sessions becomes unnecessary — first for the operator, then for any operator: every sanctioned session, local or web, arrives pre-primed with live cross-channel context, walled gardens covered by the isolated fallback, auth checkpoints resolved through HITL portals. The universal end is not a conquered territory but a vanished task: when agent frameworks transport operator context natively, the retrieval bolt-on is redundant and this project's form survives only as the substrate it left behind (longevity) or is released into its successors (seeding). That disposition — which branch, when — is an Owner act (CYCLE.md, Autonomy).
+Manual context assembly for agent sessions becomes unnecessary — first for the operator, then for any operator, then for every asking intelligence at every scale the layer reaches: every sanctioned session arrives pre-primed with live cross-channel context, walled gardens covered by the isolated fallback, auth checkpoints resolved through HITL portals. The universal end is not a conquered territory but a vanished task: no cognitive agent anywhere assembles context by hand. When context transport is native to the substrates that ask, the retrieval layer is redundant and this project's form survives only as the substrate it left behind (longevity) or is released into its successors (seeding). That disposition — which branch, when — is an Owner act (CYCLE.md, Autonomy).
 
 ---
 
