@@ -20,6 +20,35 @@ Code as documentation — names and structure must be self-explanatory. Comments
 
 ---
 
+## Engineering Invariants
+
+Enforced at audit (METHODOLOGY.md Post-Phase Audit, item 5). Deviations must be declared in `AGENTS.md` Conventions with rationale — undeclared violations are gaps.
+
+**Boundary defense** — all untrusted input (HTTP parameters and bodies, queue messages, environment variables, files from other systems) passes a runtime schema parser at the ingestion boundary. Internal code trusts validated contracts and omits redundant defensive checks for guaranteed fields. Never pass unvalidated dynamic types into domain functions.
+
+**Re-entrant mutations** — every state-altering operation (write endpoints, queue consumers, scheduled jobs) accepts an idempotency key or deterministic deduplication token, checked atomically before execution, with the result written back on completion. Financial and counter mutations never execute without an explicit transaction lock or idempotency guard.
+
+**Non-destructive schema evolution** — migrations run Expand → dual-write → backfill → Contract, each in a distinct deployment; forward- and backward-compatible with N−1 running instances. Substrates that cannot contract (deployed smart contracts, append-only stores) substitute versioned parallel deployment; the substitution is recorded under Constraints.
+
+**Vertical slice locality** — code grouped by domain feature, not technical layer. A feature slice co-locates its route, schema, domain rules, and queries. A single business-capability change touching more than three distinct folders is a design smell — reject or document the exception.
+
+**Indirection cap** — at most three hops within a feature domain: handler → domain rule → persistence. Abstractions generalize only after the same logic occurs at ≥3 production call-sites (Rule of Three).
+
+---
+
+## Banned Patterns
+
+| Pattern | Replacement |
+|---|---|
+| Generic repository abstraction over the ORM | Native ORM queries or type-safe compiled SQL directly in the slice |
+| Premature microservices | Modular monolith with language-enforced visibility boundaries |
+| Global DRY across bounded contexts | Context-local duplication; integrate through contracts, not shared models |
+| Speculative OOP (AbstractFactory, Strategy/Visitor classes for one implementation) | Functions, guard clauses, native pattern matching |
+| Unstructured logging | Structured logs with correlation/trace/tenant IDs propagated across async boundaries |
+| Mock-testing internal boundaries; tautological tests asserting mock calls | Real ephemeral dependencies (Testcontainers or local instances); mocks only for external third-party APIs |
+
+---
+
 ## System Diagram
 
 Planned data flow (Phase 0 established the sources; `ingest/` and `detector/` are built in Phases 1–6).
