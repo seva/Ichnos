@@ -1,6 +1,6 @@
-# ichnos — Mythos Footprint Detector
+# ichnos — Cross-Channel Context Engine (CCE)
 
-A research instrument that tests whether Claude Mythos has a stylometric signature detectable in Glasswing-credited vulnerability advisories, by training a classifier on Mythos-attributed advisory text against same-maintainer same-period controls and validating on a held-out maintainer to distinguish a Mythos signature from a maintainer confound.
+A context engine that lets sanctioned agents and surfaces retrieve the operator's live cross-channel context on prompt over MCP — API/protocol fast-paths where they exist, an isolated virtual display as the universal fallback for walled gardens, and a HITL teleoperation portal for authentication checkpoints (2FA, CAPTCHA, login).
 
 ## Session Start
 
@@ -9,13 +9,15 @@ A research instrument that tests whether Claude Mythos has a stylometric signatu
 3. Scan `IMPLEMENTATION.md` checkboxes — first unchecked task is current state
 4. Check open GitHub issues for failures and decisions
 5. Search memory for relevant prior knowledge
+6. Locate the project in the operating cycle (`CYCLE.md`) — which step is current?
+7. Identify your role (`ROLES.md`; default Steward) and the declared role instances — no role grades its own work
 
 ## Conventions
 
-- **Corpus integrity.** Every entry in `corpus/` is fetched from a logged URL recorded in `corpus/manifest.jsonl` with `{url, fetch_ts, sha256, class, maintainer, domain}`. If a fetch fails, log the failure and skip; never invent advisory text or attribution. Plausibility is not evidence.
-- **Frozen held-out splits.** `detector/heldout.json` is committed before any model fitting. Its sha256 is recorded in `docs/heldout-provenance.md` and verified on every validation run. Touching it post-commit invalidates all downstream results and requires opening a corruption issue.
-- **Two AUCs reported as a pair.** Random-split AUC and held-out-maintainer mean AUC are always reported together with 95% CIs. A single AUC is rejected at audit. If random-split AUC is high but held-out-maintainer is low, the finding is a maintainer confound, not a Mythos signature — classify it as such, do not suppress.
-- **No mediated stylometry.** Features must be computable from raw text without LLM mediation (no "ask GPT to rate Mythos-likeness"). Mediated features are circular and disqualifying.
-- **Black-box discipline.** Mythos is treated as an opaque source observed only through outputs. The project does not call the Mythos model, does not infer architecture, and does not speculate about training data.
-- **Immutable reports.** Files in `reports/` are append-only. Revisions create a new dated file referencing the prior; nothing is overwritten or deleted. Updates are also reflected in the open phase issue.
-- **Operator.** Seva Lapsha (@swearlock). Terse, will probe for fabrication, expects numbered findings with citations. Sarcasm and unsolicited alternatives are correct behavior, not defects.
+- **Scope position** (`docs/scope.md`, updated by Orient): L1 — instance bootstrapped, terminal bound compiled; next rung is L2 (CCE MCP server live against OpenClaw). The ladder climbs to L15 (galactic civilizational); far rungs are heuristic shapes — Orient measures only against the next rung.
+- **Compiled terminal-bound constraints** (`docs/scope.md`, Terminal bound — the filter Decide applies before ranking): secrets/session material never leave the OS credential store, never logged or surfaced; the fallback executor never attaches to the primary session's input devices or viewport; adapters are read-only observers (no write-back to external channels); context is served only to registered (owner-sanctioned) consumers, scoped per consumer; the operator-scale terminal position lives only in `docs/scope.md`, owner-owned. Commitment classes run at PRAROC sets: software 1, channel adapters 2, host-isolation stack 3, credential handling 5.
+- **Language/runtime**: Python ≥3.11 for the MCP server (FastMCP lineage of `grok-research-mcp`); PowerShell on the Windows host for host-side operations; WSL2 Ubuntu + Docker for isolated components (Hyper-V status unverified — Phase 0 settles the display-isolation substrate).
+- **Test runner**: `python -m pytest` (pytest-asyncio, auto mode); coverage via pytest-cov, diagnostic only (METHODOLOGY.md Quality Signals).
+- **Formatting/linting**: `ruff check` + `ruff format --check` must pass before commit.
+- **Role instances** (`ROLES.md`): Steward = the executing agent session on this repo. Critic = a fresh subagent instance, spawned at step completion, seeing only the claim and its evidence — never the Steward's reasoning. Auditor = a separate fresh subagent instance, verifying against the constitution and the success criterion. Owner = Seva Lapsha (@swearlock) — legislative acts (scope amendments, sanctions, disposition) arrive as operator prompts and are recorded on the relevant issue. No instance grades its own work.
+- **Accepted deviations**: none.
