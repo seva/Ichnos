@@ -15,7 +15,9 @@ Established 2026-09-15. Strategy artifact: the ladder this project climbs. Orien
 | L3 | Multi-channel context matrix: per-channel precedence (API fast-path vs OS fallback) with per-channel auth state; second local MCP consumer | OpenClaw config; Chrome DPAPI session-extraction precedent (rule 01-024 ladder) |
 | L4 | Fallback tier live: walled-garden channels driven through an isolated virtual display on the Windows host, with a HITL teleoperation portal (browser/VNC) for 2FA/CAPTCHA/auth checkpoints | WSL2 + Docker present (Hyper-V unverified — needs elevation); LUMINOR index (vendored lmnr) as fallback-executor candidate; AGA `browser_controller.user.js` as adapter-contract reference |
 | L5 | Web surfaces consume the same context: browser-based interfaces retrieve operator context on prompt, scope-limited by consumer identity | AGA adapter lineage (contract only — its primary-session design is forbidden by the Host Isolation invariant) |
-| L6 (universal) | The context layer for the agentic ecosystem: multi-operator, consumer-agnostic, protocol- and platform-portable — agent sessions anywhere arrive context-primed as a native property of the stack | — |
+| L6 | The engine is operator-portable: any sanctioned MCP client on any machine retrieves this operator's context on prompt, with the isolation and HITL guarantees intact | — |
+| L7 | Multi-operator: the engine generalizes beyond its first operator — sanctioned consumers retrieve *any enrolled operator's* context under the same guarantees, scoped per consumer identity | — |
+| L8 (universal) | The context layer for agentic computing: agent sessions anywhere arrive context-primed as a native property of the stack; the engine's guarantees (precedence, isolation, HITL, sanction) are the standard the layer enforces | — |
 
 ---
 
