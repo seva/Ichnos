@@ -1,0 +1,75 @@
+# Scope — Maximal Imaginable
+
+Established 2026-09-15. Strategy artifact: the ladder this project climbs. Orient (CYCLE.md, step 1) measures the status quo against this document.
+
+**Maximal mission:** Any MCP-consuming agent or web surface — local or remote, sanctioned — retrieves the operator's live cross-channel context on prompt, through API fast-paths where they exist and an isolated-display fallback where they don't, with operator-authored authentication checkpoints resolved through a HITL portal.
+
+---
+
+## Scope ladder
+
+| Level | Scope | Current system's contribution |
+|---|---|---|
+| L1 | Instance bootstrapped on the epistegrity scaffold (85e657e); terminal bound compiled; OpenClaw gateway declared as first consumer | as-is (this document) |
+| L2 | CCE MCP server live: first channel served over fast-path (API/protocol) to OpenClaw on prompt, in a real session | registration pattern proven by grok-research-mcp (`claude mcp add-json` / `openclaw mcp set`) |
+| L3 | Multi-channel context matrix: per-channel precedence (API fast-path vs OS fallback) with per-channel auth state; second local MCP consumer | OpenClaw config; Chrome DPAPI session-extraction precedent (rule 01-024 ladder) |
+| L4 | Fallback tier live: walled-garden channels driven through an isolated virtual display on the Windows host, with a HITL teleoperation portal (browser/VNC) for 2FA/CAPTCHA/auth checkpoints | WSL2 + Docker present (Hyper-V unverified — needs elevation); LUMINOR index (vendored lmnr) as fallback-executor candidate; AGA `browser_controller.user.js` as adapter-contract reference |
+| L5 | Web surfaces consume the same context: browser-based interfaces retrieve operator context on prompt, scope-limited by consumer identity | AGA adapter lineage (contract only — its primary-session design is forbidden by the Host Isolation invariant) |
+| L6 (universal) | The engine is operator-portable: any sanctioned MCP client on any machine retrieves this operator's context on prompt, with the isolation and HITL guarantees intact | — |
+
+---
+
+## Functional depth
+
+- **Retrieval precedence** — API/protocol fast-path is the default; OS-level screen/window inspection is the universal fallback for walled gardens. Precedence is enforced structurally per channel, not chosen ad hoc per prompt.
+- **Isolation depth** — screen interactions run in an isolated virtual display; never the primary mouse, keyboard, or viewport.
+- **HITL coverage** — every auth checkpoint class the fallback can hit (2FA, CAPTCHA, login) has a defined teleoperation path.
+- **Client breadth** — one protocol (MCP), any consumer; consumer identity scopes what context is served.
+- **Trigger semantics** — "on prompt" is a defined surface: the MCP tool contract states when context is fresh, when it is re-read, and what staleness means per channel.
+
+---
+
+## Survivability
+
+- **Exfiltration** — the context store is a high-value personal-data target; every consuming agent is a potential leak path. Consumer registration is the sanction record; unregistered clients get nothing.
+- **Credential theft** — the auth-seeding tier (DPAPI session extraction) concentrates credential material; defense is the terminal-bound constraint on secrets (below), not behavior.
+- **Fallback hijack** — a screen-driving executor that attaches to the primary session destroys operator trust irrecoverably; defense is structural isolation (VM/display boundary), not process discipline.
+- **Malicious surface** — a web surface requesting context may be adversarial; consumer identity and per-consumer scoping are the boundary, enforced at the MCP server.
+- **Drift** — external APIs change shape, walled gardens change DOM/auth flows; adapters are isolated modules (ARCHITECTURE.md, Isolation of fragility) so drift burns one module, not the engine.
+
+---
+
+## Terminal bound
+
+| Compiled constraint | Irrecoverable margin it protects |
+|---|---|
+| Secrets, session material, and credentials never leave the OS credential store (DPAPI/keychain); never logged, never surfaced in tool or API output, never written in plaintext to disk | Credential exposure — a leaked session cannot be un-leaked; the trust boundary of every channel collapses with it |
+| The fallback display executor never attaches to the primary session's input devices or viewport; isolation is enforced by the substrate (separate VM/display), not by process behavior | Host input integrity — a hijacked operator session is unrecoverable trust loss |
+| The engine observes operator context; it never writes back to external channels. Read-only is a standing property of every adapter | External-channel integrity — a context engine with write access is an autonomous actor in the operator's name, outside this project's scope |
+| Context is served only to registered (owner-sanctioned) consumers, scoped per consumer | Personal-data boundary — context served to an unregistered client cannot be recalled |
+| The operator-scale terminal position lives only here, compiled and Owner-owned; the cycle never models it internally | Operator margin — a project-scale cycle that models its own end unbounds the terminal position and removes the filter |
+
+| Commitment class | Refinement level (PRAROC-n, HORIZONS.md) | Terms below the cut, registered non-drifting |
+|---|---|---|
+| Software (code, tests, docs, MCP server) | Set 1 — scalar RAROC | — |
+| Channel adapters (external API surfaces) | Set 2 — Now–Later (measure against forecast) | API shapes and rate limits assumed stable within an adapter's live life; drift is the adapter's own failure signal |
+| Host isolation stack (virtual display, executor, portal) | Set 3 — Now–Far–Unreachable (respond against accept) | Windows host OS version, WSL2/Docker substrate assumed non-drifting at session scale |
+| Credential and session handling (DPAPI seeding) | Set 5 — Now–Near–Far–End–Unreachable (state against check) | DPAPI mechanism assumed stable on this host; any credential-store change crosses Near and forces re-derivation |
+| Project terminus | Owner-compiled (this document) | — |
+
+---
+
+## Terminal form
+
+The operator never manually briefs an agent: every sanctioned session — local coding agent or web surface — arrives pre-primed with live cross-channel context, retrieved on prompt, with walled gardens covered by the isolated fallback and auth checkpoints resolved through the HITL portal. Manual context assembly for agent sessions becomes unnecessary; manual auth babysitting collapses to the HITL checkpoints alone.
+
+---
+
+## Constraint analysis
+
+- **Adoption band:** consumers are MCP clients. First: OpenClaw gateway (registration pattern proven with grok-research-mcp). Web surfaces arrive via the MCP protocol or the adapter contract referenced from AGA — never its primary-session design.
+- **Platform band:** Windows host with WSL2 + Docker present; Hyper-V unverified (requires elevation). The display-isolation spike settles WSLg vs Hyper-V VM vs Docker+VNC against the structural-isolation constraint.
+- **Channel band:** API fast-paths exist for Telegram (bot API), GitHub (authed `gh`), and keyed HTTP APIs; walled gardens fall to the display fallback. Precedence is compiled per channel in the channel matrix (Phase 0 output).
+- **Composes with current system:** the MCP server extends the grok-research-mcp FastMCP skeleton; OpenClaw consumes it as it consumes grok-research-mcp today.
+- **Requires rewrites:** any design that must drive the operator's primary session (AGA's architecture) — excluded by the terminal bound, not by preference.
+- **Nearest concrete anchors:** OpenClaw gateway (first consumer, `~/.openclaw/openclaw.json`), grok-research-mcp (MCP registration + FastMCP skeleton), LUMINOR index (fallback executor candidate), `~\OMN\SandBox\AGA\browser_controller.user.js` (adapter contract reference), Chrome DPAPI session extraction (auth-seeding precedent, rule 01-024 ladder).
