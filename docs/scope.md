@@ -2,7 +2,7 @@
 
 Established 2026-09-15. Strategy artifact: the ladder this project climbs. Orient (CYCLE.md, step 1) measures the status quo against this document.
 
-**Maximal mission:** Any MCP-consuming agent or web surface — local or remote, sanctioned — retrieves the operator's live cross-channel context on prompt, through API fast-paths where they exist and an isolated-display fallback where they don't, with operator-authored authentication checkpoints resolved through a HITL portal.
+**Maximal mission:** The context layer for agentic computing — every sanctioned agent or surface, local or web, any operator, retrieves live cross-channel context on prompt, through API fast-paths where they exist and isolated-display fallback where they don't, with authentication checkpoints resolved through HITL portals.
 
 ---
 
@@ -15,7 +15,7 @@ Established 2026-09-15. Strategy artifact: the ladder this project climbs. Orien
 | L3 | Multi-channel context matrix: per-channel precedence (API fast-path vs OS fallback) with per-channel auth state; second local MCP consumer | OpenClaw config; Chrome DPAPI session-extraction precedent (rule 01-024 ladder) |
 | L4 | Fallback tier live: walled-garden channels driven through an isolated virtual display on the Windows host, with a HITL teleoperation portal (browser/VNC) for 2FA/CAPTCHA/auth checkpoints | WSL2 + Docker present (Hyper-V unverified — needs elevation); LUMINOR index (vendored lmnr) as fallback-executor candidate; AGA `browser_controller.user.js` as adapter-contract reference |
 | L5 | Web surfaces consume the same context: browser-based interfaces retrieve operator context on prompt, scope-limited by consumer identity | AGA adapter lineage (contract only — its primary-session design is forbidden by the Host Isolation invariant) |
-| L6 (universal) | The engine is operator-portable: any sanctioned MCP client on any machine retrieves this operator's context on prompt, with the isolation and HITL guarantees intact | — |
+| L6 (universal) | The context layer for the agentic ecosystem: multi-operator, consumer-agnostic, protocol- and platform-portable — agent sessions anywhere arrive context-primed as a native property of the stack | — |
 
 ---
 
@@ -61,7 +61,7 @@ Established 2026-09-15. Strategy artifact: the ladder this project climbs. Orien
 
 ## Terminal form
 
-The operator never manually briefs an agent: every sanctioned session — local coding agent or web surface — arrives pre-primed with live cross-channel context, retrieved on prompt, with walled gardens covered by the isolated fallback and auth checkpoints resolved through the HITL portal. Manual context assembly for agent sessions becomes unnecessary; manual auth babysitting collapses to the HITL checkpoints alone.
+Manual context assembly for agent sessions becomes unnecessary — first for the operator, then for any operator: every sanctioned session, local or web, arrives pre-primed with live cross-channel context, walled gardens covered by the isolated fallback, auth checkpoints resolved through HITL portals. The universal end is not a conquered territory but a vanished task: when agent frameworks transport operator context natively, the retrieval bolt-on is redundant and this project's form survives only as the substrate it left behind (longevity) or is released into its successors (seeding). That disposition — which branch, when — is an Owner act (CYCLE.md, Autonomy).
 
 ---
 
