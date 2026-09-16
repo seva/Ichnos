@@ -8,7 +8,7 @@ Must complete before any implementation code that depends on external interfaces
 
 ### Tasks
 
-- [ ] `docs/channel-matrix.md`
+- [x] `docs/channel-matrix.md`
   * Inventory the operator's context channels (Telegram, GitHub, email, browser sessions, memory stores, filesystem) with per-channel: API fast-path availability, auth mechanism and state, rate limits, and whether OS-level inspection is required
   * Compile retrieval precedence per channel: fast-path vs isolated-display fallback — a structural choice, not per-prompt
 - [ ] `docs/display-isolation.md`
