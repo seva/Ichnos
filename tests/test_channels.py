@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 from cce_server.channels import Channel, ChannelConfig, ChannelReading
 
 
@@ -50,13 +52,13 @@ async def test_live_failure_keeps_last_value_with_reason():
         raise RuntimeError("api down")
 
     ch = make_channel(adapter)
-    await ch.get(now=1000.0)
+    r1 = await ch.get(now=1000.0)
     r = await ch.get(now=2000.0)
     assert r.unavailable is True
     assert r.stale is True
     assert r.data == {"k": "v1"}  # last-known value served
     assert "api down" in r.reason
-    assert r.last_as_of == 1000.0
+    assert r.last_as_of == r1.as_of
     # and the cached value is marked stale for subsequent reads
     again = await ch.get(now=2001.0)
     assert again.stale is True
@@ -107,3 +109,12 @@ async def test_payload_emits_data_and_last_as_of_when_present():
     assert p["data"] == {"k": "v"}
     assert p["last_as_of"] == 1.0
     assert p["stale"] is True
+
+
+async def test_as_of_is_wall_clock_epoch_not_uptime():
+    """Contract: as_of must be comparable across sessions/consumers — epoch, not monotonic."""
+    before = time.time()
+    ch = make_channel()
+    r = await ch.get()
+    after = time.time()
+    assert before <= r.as_of <= after + 1  # within epoch bounds, not a small uptime number

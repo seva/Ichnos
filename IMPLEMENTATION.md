@@ -47,7 +47,7 @@ Must complete before any implementation code that depends on external interfaces
 - [x] `tests/test_github.py` — adapter tests first: context shape, bearer auth, empty results, HTTP error propagation, token resolution ladder (explicit → env → gh CLI; failure/empty modes) — respx mocks (external third-party API)
 - [x] `cce_server/adapters/github.py` — GitHubAdapter: assigned open issues + review-requested PRs + user, brief mapping, token never logged or surfaced
 - [x] *(step)* server config wiring — registry + channels loaded from one JSON config (`cce.example.json` ships the shape; live config at `~/.config/ichnos/cce.json`); `__main__` entry point real (CCE_CONFIG + CCE_CONSUMER env)
-- [ ] *(next step)* opencode registration + live-session proof: register the stdio server in opencode.json (`mcp.ichnos-cce`, proven mechanism), install live config at `~/.config/ichnos/cce.json`, retrieve real GitHub context on prompt in a real opencode session — this closes the L2 rung
+- [x] *(step)* opencode registration + live-session proof: live config installed at `~/.config/ichnos/cce.json`; `mcp.ichnos-cce` registered in opencode.json; **operator-verified in a real opencode session (2026-09-15)**: fresh GitHub context on prompt (`stale: false`, user `seva`), cache hit on immediate re-read (identical `as_of`), unconfigured channel absent, zero secret material in any payload. L2 reached.
 
 **Verification:** a sanctioned registered consumer (opencode) retrieves live context on prompt in a real session, scoped per consumer; secrets never surfaced in tool output.
 

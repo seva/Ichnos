@@ -49,43 +49,47 @@ class Channel:
     config: ChannelConfig
     adapter: Adapter | None = None
     _cached_reading: ChannelReading | None = field(default=None, repr=False)
+    _cached_at: float | None = field(default=None, repr=False)  # monotonic; TTL clock only
 
     async def get(self, now: float | None = None) -> ChannelReading:
         now = time.monotonic() if now is None else now
-        cached = self._cached_reading
+        cached, cached_at = self._cached_reading, self._cached_at
         if (
             cached is not None
             and not cached.unavailable
-            and now - cached.as_of < self.config.ttl_seconds
+            and cached_at is not None
+            and now - cached_at < self.config.ttl_seconds
         ):
             return cached
         if self.adapter is None:
-            return self._unavailable(now, "not-configured", None)
+            return self._unavailable(now, "not-configured")
+        wall = time.time()
         try:
             data = await asyncio.wait_for(self.adapter(), timeout=self.config.timeout_seconds)
         except TimeoutError:
-            return self._unavailable(now, "timeout", now if cached else None)
+            return self._unavailable(now, "timeout")
         except Exception as exc:  # noqa: BLE001 — adapter failures are channel states, not crashes
-            return self._unavailable(now, f"read-failed: {exc}", now if cached else None)
-        reading = ChannelReading(as_of=now, stale=False, data=data)
+            return self._unavailable(now, f"read-failed: {exc}")
+        reading = ChannelReading(as_of=wall, stale=False, data=data)
         self._cached_reading = reading
+        self._cached_at = now
         return reading
 
-    def _unavailable(self, now: float, reason: str, last_as_of: float | None) -> ChannelReading:
-        last = self._cached_reading.as_of if self._cached_reading else last_as_of
-        has_data = self._cached_reading is not None and self._cached_reading.data is not None
+    def _unavailable(self, now: float, reason: str) -> ChannelReading:
+        cached = self._cached_reading
+        has_data = cached is not None and cached.data is not None
         reading = ChannelReading(
-            as_of=now,
+            as_of=time.time(),
             stale=True,
-            data=self._cached_reading.data if has_data else None,
+            data=cached.data if has_data else None,
             reason=reason,
-            last_as_of=last,
+            last_as_of=cached.as_of if has_data else None,
             unavailable=True,
         )
         if has_data:
             self._cached_reading = ChannelReading(
-                as_of=self._cached_reading.as_of,
+                as_of=cached.as_of,
                 stale=True,
-                data=self._cached_reading.data,
+                data=cached.data,
             )
         return reading
