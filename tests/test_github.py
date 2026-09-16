@@ -141,6 +141,44 @@ async def test_gh_cli_failure_raises_token_unavailable(monkeypatch):
 
 
 @respx.mock
+async def test_gh_subprocess_never_inherits_transport_stdin(monkeypatch):
+    """Property (terminal-bound adjacent): the token subprocess must never see the MCP pipe."""
+    import subprocess
+
+    captured = {}
+
+    class FakeCompleted:
+        stdout = "tok\n"
+
+    def fake_run(cmd, **kwargs):
+        captured.update(kwargs)
+        return FakeCompleted()
+
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.setattr("shutil.which", lambda name: "gh" if name == "gh" else None)
+    monkeypatch.setattr("subprocess.run", fake_run)
+    mock_github(respx)
+    adapter = GitHubAdapter()
+    await adapter.read()
+    assert captured["stdin"] == subprocess.DEVNULL
+
+
+def test_gh_location_fallback_is_deterministic(monkeypatch, tmp_path):
+    """which() misses, but a standard install location exists -> used; otherwise TokenUnavailable."""
+    from cce_server.adapters.github import _gh_command
+
+    fake = tmp_path / "gh.exe"
+    fake.write_bytes(b"")
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.setattr("shutil.which", lambda name: None)
+    monkeypatch.setattr("cce_server.adapters.github._GH_LOCATIONS", (str(fake),))
+    assert _gh_command() == [str(fake)]
+    monkeypatch.setattr("cce_server.adapters.github._GH_LOCATIONS", ())
+    with pytest.raises(TokenUnavailable, match="not found on PATH"):
+        _gh_command()
+
+
+@respx.mock
 async def test_env_token_used_without_gh(monkeypatch):
     monkeypatch.setenv("GITHUB_TOKEN", "env-token")
     mock_github(respx)
@@ -150,11 +188,15 @@ async def test_env_token_used_without_gh(monkeypatch):
     assert respx.routes[0].calls.last.request.headers["Authorization"] == "Bearer env-token"
 
 
-async def test_gh_cli_empty_output_raises_token_unavailable(monkeypatch):
+async def test_gh_cli_empty_output_raises_token_unavailable(monkeypatch, tmp_path):
     class FakeCompleted:
         stdout = "  \n"
 
+    fake = tmp_path / "gh.exe"
+    fake.write_bytes(b"")
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.setattr("shutil.which", lambda name: None)
+    monkeypatch.setattr("cce_server.adapters.github._GH_LOCATIONS", (str(fake),))
     monkeypatch.setattr("subprocess.run", lambda *a, **k: FakeCompleted())
     adapter = GitHubAdapter()
     with pytest.raises(TokenUnavailable, match="empty output"):

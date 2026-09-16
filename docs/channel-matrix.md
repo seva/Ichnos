@@ -1,6 +1,6 @@
 # Channel Matrix — Inventory & Precedence (Phase 0)
 
-**Status: channel facts CONFIRMED by machine verification 2026-09-15 — probed paths and auth states are booleans ✓; negative-existence claims (a walled garden having no API) are marked "structural" and are arguments, not probes. TTL/timeout values PROPOSED — they parameterize the `get_context` contract (`docs/consumer-registration.md`) and are ratified at adapter implementation.**
+**Status: channel facts CONFIRMED by machine verification 2026-09-15 — probed paths and auth states are booleans ✓; negative-existence claims (a walled garden having no API) are marked "structural" and are arguments, not probes. TTL/timeout values: GitHub 300s/10s **RATIFIED** — live in production and operator-verified in a real session (cache hit at 300s TTL, 2026-09-15); other channels' values remain PROPOSED until their adapters implement. They parameterize the `get_context` contract (`docs/consumer-registration.md`).**
 
 ---
 

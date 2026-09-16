@@ -75,7 +75,9 @@ _Last verified: 2026-09-15 (planned; sources pinned by Phase 0)_
 
 | Component | Responsibility | Key interface |
 |---|---|---|
-| `cce_server` (MCP server) | Serves `get_context` over MCP: per-channel TTL/timeout/staleness contract, server-side per-consumer scoping from registration config; identity from the `CCE_CONSUMER` registration binding, never client-supplied | `build_server(registry, channels, binding) -> FastMCP`; tool `get_context(channels_requested?) -> {consumer, summary, generated_at, channels: {name: {as_of, stale, data?, unavailable?, reason?, last_as_of?}}}`; console script `ichnos-cce` (stdio; config wiring pending — Phase 1 adapter task) |
+| `cce_server` (MCP server) | Serves `get_context` over MCP: per-channel TTL/timeout/staleness contract, server-side per-consumer scoping from registration config; identity from the `CCE_CONSUMER` registration binding, never client-supplied | `build_server(*, registry, channels, binding) -> FastMCP`; tool `get_context(channels_requested?) -> {consumer, summary, generated_at, channels: {name: {as_of (epoch), stale, data?, unavailable?, reason?, last_as_of?}}}`; console script `ichnos-cce` (stdio) |
+| `cce_server.config` (wiring) | One JSON config → running app: registry from config, enabled channels wired to adapters, unknown channel names rejected at load; config path via `CCE_CONFIG` (default `~/.config/ichnos/cce.json`), shape shipped as `cce.example.json` | `load_config(path) -> dict`; `build_channels(channels_config) -> list[Channel]`; `build_app_from_config(config_path, binding?) -> FastMCP`; `CHANNEL_ADAPTERS: {name -> adapter class exposing async read()}` |
+| `cce_server.adapters.github` (fast-path adapter) | GitHub channel: authenticated user, assigned open issues, review-requested open PRs; token ladder explicit arg → `GITHUB_TOKEN` env → gh CLI (standard-install fallback); token never logged or surfaced | `GitHubAdapter(token?)` with `async read() -> {user, assigned_issues[], review_requested_prs[]}`; raises `TokenUnavailable` before any call when unresolvable |
 
 _Last verified: 2026-09-15_
 
