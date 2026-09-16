@@ -89,7 +89,7 @@ _Last verified: 2026-09-15_
 | Retrieval precedence | API/protocol fast-path default; OS-level inspection as universal fallback | Handoff invariant; compiled per channel in `docs/channel-matrix.md` (Phase 0) — structural, not per-prompt |
 | Display isolation | Structural — separate virtual display substrate; never primary-session attachment | Terminal bound (`docs/scope.md`); substrate chosen by Phase 0 (`docs/display-isolation.md`) |
 | Adapter write posture | Read-only observers — no write-back to external channels | Owner sanction 2026-09-15, recorded on issue #2; a context engine with write access is an autonomous actor outside project scope |
-| Auth seeding | OS credential store only (DPAPI ladder); never plaintext on disk, in logs, or in tool output | Terminal bound (`docs/scope.md`); formalized in Phase 0 (`docs/auth-seeding.md`) |
+| Auth seeding | Browser-mediated extraction (ABE era): encrypted profile copies only, plaintext memory-resident host→VM, pipe transport, never plaintext on disk, in logs, or in tool output | Terminal bound (`docs/scope.md`); re-derived after Near fired on DPAPI (`docs/auth-seeding.md`) |
 | Consumer access | Registered (owner-sanctioned) consumers only, scoped per consumer | Owner sanction 2026-09-15, recorded on issue #2; unregistered clients receive nothing |
 
 _Last verified: 2026-09-15_

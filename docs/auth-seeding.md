@@ -7,9 +7,10 @@
 ## Host facts (verified 2026-09-15)
 
 - Chrome profile present; `Local State` carries **both** `encrypted_key` (legacy DPAPI) and `app_bound_encrypted_key` (ABE).
-- Cookies DB present at `Default\Network\Cookies` (sqlite; `encrypted_value` blobs).
-- Edge profile present (same ABE mechanics, same treatment).
-- Consequence: cookie key material is bound to the browser's elevation service — extracting it by direct DPAPI decryption is the *old* mechanism; on this host the **browser must mediate decryption** (it holds the unbound key internally via its COM elevation service).
+- Cookies DB present at `Default\Network\Cookies` (sqlite; `encrypted_value` blobs). **Exclusively locked by the running browser** — live reads fail with a sharing violation (verified by probe 2026-09-15).
+- Edge profile present; `app_bound_encrypted_key` re-verified in Edge's `Local State`. Mechanics-equivalence with Chrome is argued from the shared Chromium codebase, not independently probed.
+- Per-cookie protection state migrates gradually (legacy `v10` DPAPI blobs vs `v20` ABE blobs coexist during transition); the individual state of each cookie blob was **not** verified (source DB locked). The route below deliberately works regardless of which protector a given cookie uses.
+- Consequence: cookie decryption is **browser-mediated** on this host — the browser alone holds the unbound key internally via its elevation service. Whether a given cookie is DPAPI- or ABE-protected, the extraction route is the same.
 
 ---
 
@@ -28,13 +29,17 @@
 
 Stage 0 (removed): direct DPAPI decryption of `encrypted_key` — **retired**: ABE binds current cookie encryption to the browser's elevation service; the DPAPI rung of rule 01-024 remains valid only for legacy stores and as the underlying protector below ABE.
 
-Stage 1 — **host-side browser-mediated extraction**: launch a *separate, temporary* Chrome instance on the host (never attach to the operator's running browser) with a **minimal profile copy**: `Local State` + the cookies DB only, into a temp user-data-dir. Values remain encrypted at rest in the copy (no plaintext-at-rest violation). Launch with a loopback-only remote-debugging port; read cookies via CDP (`Storage.getCookies`) — the browser decrypts internally; decrypted values exist only in process memory.
+Stage 1 — **host-side browser-mediated extraction**: launch a *separate, temporary* Chrome instance on the host (never attach to the operator's running browser) against a **minimal profile copy** in a fresh temp user-data-dir. No `SingletonLock` is copied (fresh dir, by construction — the running primary's lock is irrelevant). The copy contains only `Local State` and the cookies DB, which holds **encrypted** blobs — no plaintext at rest; the temp dir is **deleted immediately after stage 2 completes or on any abort**, so the encrypted duplicate exists only for the extraction window.
 
-Stage 2 — **transport**: decrypted cookie values flow host → isolated display VM over the display stack's control channel (direct CDP to the VM's browser: `Network.setCookie`). **Never through files, never through logs, never in tool output.** The extraction process's memory is the only plaintext residence on the host.
+*Live-copy problem (verified): the source Cookies DB is exclusively locked while Chrome runs. The copy is therefore one of:* (a) taken while the operator's browser is closed (simplest, needs operator quiescence), (b) via a VSS shadow copy (works against the live DB; **requires elevation — owner sanction**), or (c) deferred entirely in favor of the dedicated-profile route (open item 2). Implementation picks one per run and records which; no silent fallback between them. A **partial/torn copy is a failure**: the copied DB's cookie name-set (names are plaintext columns, not secret) is diffed against the expected session set before proceeding — mismatch aborts.
 
-Stage 3 — **probe & handoff**: the seeded session is verified inside the display with a low-risk authenticated probe (read-only page fetch). On success: display session live, seeding record = `{channel, cookie_count, as_of}` metadata only. On failure: **no plaintext fallback anywhere** — the channel degrades to the HITL portal (operator logs in manually inside the display), which is the designed path for exactly this.
+Launch with **`--remote-debugging-pipe`** (fd-based, no TCP socket, unconnectable by other processes — a loopback port would authenticate nothing and expose decrypted cookies to any local process). The temp instance decrypts internally; decrypted values exist only in the extraction process's memory.
 
-Bound compliance: no plaintext at rest (copy holds only encrypted blobs; decrypted values memory-resident then in-VM); no attach to the primary session's browser (separate instance, separate profile copy); source profile is read-only (never written back); secrets never logged/surfaced (metadata-only records); values never leave host+VM memory.
+Stage 2 — **transport**: decrypted cookie values flow host → isolated display VM over an **authenticated control channel** (pipe-based where the substrate allows; TCP only with mutual authentication — transport auth is a **substrate selection criterion** fed to `docs/display-isolation.md`), injected via CDP into the VM's browser (`Network.setCookie`). **Never through files, never through logs, never in tool output.** Plaintext residence: the extraction process's memory, then the VM's browser process — nothing else, no host disk.
+
+Stage 3 — **probe & handoff**: the seeded session is verified inside the display with a low-risk authenticated probe (read-only page fetch) — this is the check that actually states session validity. On success: display session live, seeding record = `{channel, cookie_count, as_of, stale}` metadata only. On failure: **no plaintext fallback anywhere** — the channel degrades to the HITL portal (operator logs in manually inside the display), which is the designed path for exactly this.
+
+Bound compliance: no plaintext at rest (copy holds only encrypted blobs, deleted post-extraction; decrypted values memory-resident then in-VM); no attach to the primary session's browser (separate instance, pipe transport, no TCP); source profile is read-only (never written back — no planted canary cookies); secrets never logged/surfaced (metadata-only records); values never leave host+VM memory; every local endpoint is a pipe, not a socket.
 
 ---
 
@@ -42,12 +47,12 @@ Bound compliance: no plaintext at rest (copy holds only encrypted blobs; decrypt
 
 | Term | Registered drift signal | Check |
 |---|---|---|
-| ABE mechanism | Chrome/Edge major update altering `Local State`/elevation-service behavior | pre-seed probe: stage-1 extraction verified on a canary cookie before any transport |
-| Profile layout | browser update moving/renaming Cookies DB or Local State fields | stage-1 path assertions fail loudly → Near, re-derive |
-| Display transport | display substrate change (Phase 0 display-isolation output) | stage-2 CDP reachability check per seeding run |
+| Extraction-mechanism viability | browser update altering CDP surface, `Local State` schema, or elevation-service behavior | stage-1 canary: fresh temp instance + CDP cookie read verified mechanically before any transport (the browser absorbs protector changes internally by design — this check states the term the route actually depends on: extraction working, not ABE state frozen) |
+| Copy integrity | torn/partial copy while the live DB is locked | cookie name-set diff (names are plaintext, not secret) against the expected session set — mismatch aborts |
+| Display transport | display substrate change (Phase 0 display-isolation output) | stage-2 authenticated-channel reachability check per seeding run |
 | Session validity | sites rotate/invalidate sessions independently of the browser | stage-3 probe failure → HITL portal (normal, not exceptional) |
 
-Term below the cut, registered non-drifting: DPAPI as the *underlying* protector on this host for legacy keys (the `encrypted_key` blob) — its own drift is subsumed by the stage-1 check.
+Term below the cut, registered non-drifting: DPAPI as the *underlying* protector for legacy blobs (the `encrypted_key` path) — its own drift is subsumed by the stage-1 canary.
 
 ---
 
@@ -55,10 +60,12 @@ Term below the cut, registered non-drifting: DPAPI as the *underlying* protector
 
 | Failure | Response |
 |---|---|
-| Stage-1 probe fails (ABE/layout drift) | stop; no partial seeding; Near fired → re-derive the ladder; channel serves `unavailable` per contract |
-| Stage-2 transport unreachable (substrate down) | stop; channel `unavailable`; no local caching of decrypted values |
+| Source DB locked and no copy route sanctioned (no quiescence, no VSS elevation) | seeding unavailable this run — channel serves `unavailable` per contract; operator chooses route (a), (b), or (c) explicitly |
+| Torn/partial copy (name-set mismatch) | abort; temp dir deleted; no partial seeding; retry or HITL |
+| Stage-1 probe fails (mechanism/layout drift) | stop; no transport; Near fired → re-derive the ladder; channel serves `unavailable` |
+| Stage-2 transport unreachable/unauthenticated (substrate down or misconfigured) | stop; temp dir deleted; channel `unavailable`; no local caching of decrypted values |
 | Stage-3 probe fails (session invalid/rotated) | non-exceptional: HITL portal handoff; seeding record marked stale |
-| Extraction process crash | decrypted values die with the process (memory-only); no cleanup problem exists by construction |
+| Extraction process crash | decrypted values die with the process (memory-only); temp dir deleted on restart detection; no cleanup problem beyond the encrypted copy |
 
 ---
 
