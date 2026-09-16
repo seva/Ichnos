@@ -11,7 +11,7 @@ Established 2026-09-15. Strategy artifact: the ladder this project climbs. Orien
 | Level | Scope | Current system's contribution |
 |---|---|---|
 | L1 | Instance bootstrapped on the epistegrity scaffold (85e657e); terminal bound compiled; OpenClaw gateway declared as first consumer | as-is (this document) |
-| L2 | CCE MCP server live: first channel served over fast-path (API/protocol) to OpenClaw on prompt, in a real session | registration pattern proven by grok-research-mcp (`claude mcp add-json` / `openclaw mcp set`) |
+| L2 | CCE MCP server live: first channel served over fast-path (API/protocol) to OpenClaw on prompt, in a real session | claude-path registration proven (grok-research-mcp live via `claude mcp add-json`); gateway path (`openclaw mcp set`) exists, unproven — L2 proves it (`docs/consumer-registration.md`) |
 | L3 | Multi-channel context matrix: per-channel precedence (API fast-path vs OS fallback) with per-channel auth state; second local MCP consumer | OpenClaw config; the DPAPI rung of the rule 01-024 escalation ladder (Automation First: API → web_fetch → Playwright → PyAutoGUI → DPAPI) |
 | L4 | Fallback tier live: walled-garden channels driven through an isolated virtual display on the Windows host, with a HITL teleoperation portal (browser/VNC) for 2FA/CAPTCHA/auth checkpoints | WSL2 + Docker present (Hyper-V unverified — needs elevation); LUMINOR index (vendored lmnr) as fallback-executor candidate; AGA `browser_controller.user.js` as adapter-contract reference |
 | L5 | Web surfaces consume the same context: browser-based interfaces retrieve operator context on prompt, scope-limited by consumer identity | AGA adapter lineage (contract only — its primary-session design is forbidden by the Host Isolation invariant) |
