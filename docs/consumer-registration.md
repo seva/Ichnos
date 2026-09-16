@@ -8,15 +8,16 @@ _Last verified: 2026-09-15_
 
 ## Registration pattern
 
-Two consumer classes exist today; one registration path is proven, one unproven:
+Two consumer classes exist today; both registration paths are now exercised:
 
 | Path | Mechanism | Evidence |
 |---|---|---|
-| Claude-compatible runners (`claude`, opencode) | `claude mcp add-json <name> '<json>'` — full server config as JSON, including env vars; registered at user scope in `~/.claude.json` | **CONFIRMED** — `grok-research-mcp` runs live in Claude/opencode sessions via this path; the memory MCP service (`mcp-memory-service`, sqlite_vec backend) likewise |
-| OpenClaw gateway | `openclaw mcp set` (gateway-native MCP registration; command verified to exist) | **UNPROVEN** — no MCP registration of grok-research observable in `openclaw.json`; proof is a Phase 1 integration task (the L2 rung) |
+| Claude-compatible runners (`claude`, opencode) | `claude mcp add-json <name> '<json>'` — full server config as JSON, including env vars; registered at user scope in `~/.claude.json` | **CONFIRMED** — `grok-research-mcp` runs live in Claude/opencode sessions via this path; the memory MCP service (`mcp-memory-service`, sqlite_vec backend) likewise; ichnos-cce registered via opencode.json (2026-09-15, live session verified) |
+| OpenClaw gateway | `openclaw mcp set <name> '<json>'` — gateway-native registration; hot-reload applies on save | **CONFIRMED** (2026-09-15) — ichnos-cce registered with `CCE_CONSUMER=openclaw`; gateway log: "config hot reload applied (mcp.servers.ichnos-cce)"; in-session tool call pending VixeYult's next session |
 
 Practical notes:
 - `claude mcp add-json` is the correct form for servers that need env vars; `claude mcp add -e` mishandles the server name.
+- OpenClaw's `mcp set` takes a JSON object with `command`/`args`/`env`; the gateway hot-reloads `mcp.servers.*` changes automatically — acceptance is verifiable in `~/.openclaw/logs/openclaw.log` (rejection is silent in config alone).
 - MCP subprocess init measurably slows client startup (observed ~7s in an April 2026 opencode cliBackend measurement — prior substrate, **UNMEASURED here**; treat as a shape warning, not a number). CCE must keep startup lazy/cheap — heavy imports deferred until first tool call.
 - Registration is the **sanction record**: a consumer exists for the engine only when it is registered.
 
