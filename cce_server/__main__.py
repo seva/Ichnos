@@ -1,10 +1,11 @@
-"""Entry point: stdio server, consumer identity from the registration binding (env)."""
+"""Entry point: stdio server. Identity from the CCE_CONSUMER registration binding (env);
+configuration from the CCE_CONFIG path (default ~/.config/ichnos/cce.json)."""
 
 from __future__ import annotations
 
 import os
 
-from cce_server.registry import Registry
+from cce_server.config import DEFAULT_CONFIG_PATH, build_app_from_config
 
 
 def main() -> None:
@@ -13,11 +14,8 @@ def main() -> None:
         raise SystemExit(
             "CCE_CONSUMER not set — consumer identity comes from the registration binding"
         )
-
-    from cce_server.server import build_server
-
-    registry = Registry.from_config({})  # channel/consumer config wired at adapter integration
-    app = build_server(registry=registry, channels=[], binding=binding)
+    config_path = os.environ.get("CCE_CONFIG", DEFAULT_CONFIG_PATH)
+    app = build_app_from_config(config_path, binding=binding)
     app.run(transport="stdio")
 
 

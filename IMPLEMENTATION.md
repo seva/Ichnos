@@ -30,7 +30,7 @@ Must complete before any implementation code that depends on external interfaces
 
 ## Phase 1 — MCP server core
 
-**Goal:** A live MCP server serving the operator's context to OpenClaw on prompt — the L2 rung.
+**Goal:** A live MCP server serving the operator's context to a sanctioned registered consumer on prompt — the L2 rung. First live target: **opencode** (Owner ruling 2026-09-15: the OpenClaw-gateway framing was unnecessary drift).
 
 **Adapter decision (2026-09-15):** first fast-path adapter = **GitHub** (RAROC ≈ 1.7 vs Telegram-bot 1.27: V5 — repo/issue/PR state is the context developer agents actually consume; both channels machine-verified; GitHub's content matches the primary consumer class). Telegram-bot follows as the second adapter.
 
@@ -46,10 +46,10 @@ Must complete before any implementation code that depends on external interfaces
 - [x] `cce_server/server.py` — build_server(registry, channels, binding) → FastMCP app
 - [x] `tests/test_github.py` — adapter tests first: context shape, bearer auth, empty results, HTTP error propagation, token resolution ladder (explicit → env → gh CLI; failure/empty modes) — respx mocks (external third-party API)
 - [x] `cce_server/adapters/github.py` — GitHubAdapter: assigned open issues + review-requested PRs + user, brief mapping, token never logged or surfaced
-- [ ] *(next step)* server config wiring (registry + channel configs loaded from a config file — `__main__.py` is currently a stub that cannot start; this task owns making the entry point real)
-- [ ] *(next step)* consumer registration against OpenClaw gateway (proves the UNPROVEN gateway path — the L2 rung's remaining gap)
+- [x] *(step)* server config wiring — registry + channels loaded from one JSON config (`cce.example.json` ships the shape; live config at `~/.config/ichnos/cce.json`); `__main__` entry point real (CCE_CONFIG + CCE_CONSUMER env)
+- [ ] *(next step)* opencode registration + live-session proof: register the stdio server in opencode.json (`mcp.ichnos-cce`, proven mechanism), install live config at `~/.config/ichnos/cce.json`, retrieve real GitHub context on prompt in a real opencode session — this closes the L2 rung
 
-**Verification:** OpenClaw retrieves live context on prompt in a real session, scoped per consumer; secrets never surfaced in tool output.
+**Verification:** a sanctioned registered consumer (opencode) retrieves live context on prompt in a real session, scoped per consumer; secrets never surfaced in tool output.
 
 ---
 
