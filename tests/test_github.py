@@ -100,6 +100,8 @@ async def test_http_error_propagates_to_channel_layer():
 
 async def test_missing_token_raises_before_any_call(monkeypatch):
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.setattr("shutil.which", lambda name: None)
+    monkeypatch.setattr("cce_server.adapters.github._GH_LOCATIONS", ())
     adapter = GitHubAdapter()
     with pytest.raises(TokenUnavailable):
         await adapter.read()
@@ -111,6 +113,7 @@ async def test_gh_cli_token_fallback(monkeypatch):
         stdout = "cli-token\n"
 
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.setattr("shutil.which", lambda name: "gh" if name == "gh" else None)
     monkeypatch.setattr(
         "subprocess.run",
         lambda *a, **k: FakeCompleted(),
@@ -126,6 +129,7 @@ async def test_gh_cli_failure_raises_token_unavailable(monkeypatch):
     import subprocess
 
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.setattr("shutil.which", lambda name: "gh" if name == "gh" else None)
 
     def boom(*a, **k):
         raise subprocess.SubprocessError("gh not found")

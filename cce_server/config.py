@@ -41,7 +41,7 @@ def build_channels(channels_config: dict[str, Any]) -> list[Channel]:
                     ttl_seconds=spec.get("ttl_seconds", 300),
                     timeout_seconds=spec.get("timeout_seconds", 10),
                 ),
-                adapter=adapter_cls(),
+                adapter=adapter_cls().read,
             )
         )
     return channels

@@ -18,6 +18,21 @@ class TokenUnavailable(Exception):
     """No GitHub token resolvable — the adapter refuses to call the API."""
 
 
+_GH_LOCATIONS = (r"C:\Program Files\GitHub CLI\gh.exe",)
+
+
+def _gh_command() -> list[str]:
+    import shutil
+
+    exe = shutil.which("gh")
+    if exe:
+        return [exe]
+    for path in _GH_LOCATIONS:
+        if os.path.exists(path):
+            return [path]
+    raise TokenUnavailable("gh CLI not found on PATH or standard install locations")
+
+
 def _repo(repository_url: str) -> str:
     return repository_url.removeprefix(f"{BASE_URL}/repos/")
 
@@ -46,11 +61,12 @@ class GitHubAdapter:
 
         try:
             result = subprocess.run(
-                ["gh", "auth", "token"],
+                [*_gh_command(), "auth", "token"],
                 capture_output=True,
                 text=True,
                 check=True,
                 timeout=10,
+                stdin=subprocess.DEVNULL,  # never inherit the MCP stdio pipe
             )
         except (subprocess.SubprocessError, OSError) as exc:
             raise TokenUnavailable(f"gh CLI token resolution failed: {exc}") from exc
