@@ -6,8 +6,11 @@ from dataclasses import dataclass
 from typing import Any
 
 
-class UnregisteredConsumer(Exception):
+class UnregisteredConsumer(PermissionError):
     """Raised for a consumer absent from the registration config — it receives no context data."""
+
+    def __init__(self, consumer: str):
+        super().__init__(f"unregistered consumer: {consumer}")
 
 
 @dataclass(frozen=True)
@@ -18,6 +21,7 @@ class ConsumerScope:
     writable: list[str] | None = (
         None  # channels where write tools are exposed; None/empty = read-only
     )
+    snippet_length: int | None = None  # brief content truncated to N chars when set
 
     @property
     def summary(self) -> bool:
@@ -50,6 +54,7 @@ class Registry:
                 level=level,
                 channels=spec.get("channels") if level == "channels" else None,
                 writable=spec.get("writable") or [],
+                snippet_length=spec.get("snippet_length"),
             )
         return cls(consumers=consumers)
 

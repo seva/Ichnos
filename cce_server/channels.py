@@ -14,6 +14,9 @@ class ChannelConfig:
     name: str
     ttl_seconds: float
     timeout_seconds: float
+    query_driven: bool = (
+        False  # True: retrieval against the query (no TTL cache — every call is live)
+    )
 
 
 @dataclass(frozen=True)
@@ -51,11 +54,12 @@ class Channel:
     _cached_reading: ChannelReading | None = field(default=None, repr=False)
     _cached_at: float | None = field(default=None, repr=False)  # monotonic; TTL clock only
 
-    async def get(self, now: float | None = None) -> ChannelReading:
+    async def get(self, now: float | None = None, query: str | None = None) -> ChannelReading:
         now = time.monotonic() if now is None else now
         cached, cached_at = self._cached_reading, self._cached_at
         if (
-            cached is not None
+            not self.config.query_driven
+            and cached is not None
             and not cached.unavailable
             and cached_at is not None
             and now - cached_at < self.config.ttl_seconds
@@ -65,7 +69,10 @@ class Channel:
             return self._unavailable(now, "not-configured")
         wall = time.time()
         try:
-            data = await asyncio.wait_for(self.adapter(), timeout=self.config.timeout_seconds)
+            data = await asyncio.wait_for(
+                self.adapter(query) if self.config.query_driven else self.adapter(),
+                timeout=self.config.timeout_seconds,
+            )
         except TimeoutError:
             return self._unavailable(now, "timeout")
         except Exception as exc:  # noqa: BLE001 — adapter failures are channel states, not crashes

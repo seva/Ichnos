@@ -91,10 +91,10 @@ Must complete before any implementation code that depends on external interfaces
 
 - [x] A1 `tests/test_memory_tools.py` — search (query → top-k briefs), store (text + tags + provenance `client: gemini`), delete (by hash), recall; service failure → explicit errors; no raw service errors escape
 - [x] A2 `cce_server/adapters/memory.py` — MCP client to the memory service (streamable-http `127.0.0.1:8000`); search/store/delete/recall passthrough with brief mapping + provenance injection
-- [ ] B1 `tests/test_scoping.py` extension — `summary` orthogonal to channel filtering; gemini = memory read/write; existing scopes regression-pinned
-- [ ] B2 `cce_server/registry.py` — capability dimension added
-- [ ] C1 `tests/test_http.py` — streamable-HTTP serves the toolset per consumer capability; bearer token → consumer per request; unknown token → no context data
-- [ ] C2 `config.py`/`server.py` — HTTP mode (port 8001) + token→consumer map in `cce.json`; stdio mode unchanged
+- [x] B1 `tests/test_scoping.py` extension — `summary` orthogonal to channel filtering; gemini = memory read/write; existing scopes regression-pinned
+- [x] B2 `cce_server/registry.py` — capability dimension added
+- [x] C1 `tests/test_http.py` — streamable-HTTP serves the toolset per consumer capability; bearer token → consumer per request; unknown token → no context data (real-path integration: ASGI transport + real MCP client + LifespanManager)
+- [x] C2 `config.py`/`server.py` — HTTP mode (port 8001) + token→consumer map in `cce.json`; stdio mode unchanged; memory channel = first query-driven channel (no TTL cache, retrieval against the prompt); snippet_length rendering
 - [ ] C3 **state-advance commit** — memory channel live ⇒ L3 reached ⇒ AGENTS.md + scope.md + record-sync rules updated in the same commit
 - [ ] D1 Tailscale Funnel: enable public funnel for port 8001; cleanup stale serve rule (→ 4096, no listener); verify external reachability + TLS
 - [ ] D2 Minimal OAuth 2.1 layer: `/.well-known` metadata + `/authorize` (operator one-time-code consent) + `/token` (static client ID/secret); unknown clients rejected
