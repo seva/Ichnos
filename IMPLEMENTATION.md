@@ -19,7 +19,7 @@ Must complete before any implementation code that depends on external interfaces
   * Verify the chosen portal reaches the isolated display and requires no primary-session attachment
 - [ ] `docs/auth-seeding.md`
   * Formalize the Chrome DPAPI session-extraction ladder (rule 01-024 precedent): what is extractable, where it is stored (OS credential store only), and how seed state flows into the fallback display without ever touching disk in plaintext
-- [ ] `docs/consumer-registration.md`
+- [x] `docs/consumer-registration.md`
   * Document the consumer registration pattern (`claude mcp add-json` / `openclaw mcp set`, proven with grok-research-mcp) and the per-consumer context-scoping model
   * Define the "on prompt" trigger semantics: the MCP tool contract states when context is fresh, when it is re-read, and what staleness means per channel
 
