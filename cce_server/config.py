@@ -19,24 +19,53 @@ CHANNEL_ADAPTERS: dict[str, type] = {
 
 
 class McpMemoryCaller:
-    """Real tool-caller: per-call MCP client session to the memory service (localhost)."""
+    """Real tool-caller: stateless JSON-RPC over HTTP to the memory service.
+
+    The memory service (mcp-memory-service 4.1.1) speaks plain JSON-RPC POSTs
+    (protocol 2024-11-05, no session id, no SSE stream) — not the newer
+    streamable-HTTP handshake, so this caller talks to it directly."""
 
     def __init__(self, url: str) -> None:
         self._url = url
 
     async def __call__(self, name: str, args: dict[str, Any]) -> str:
-        from mcp import ClientSession
-        from mcp.client.streamable_http import streamablehttp_client
+        import httpx
 
-        async with (
-            streamablehttp_client(self._url) as (read, write, _),
-            ClientSession(read, write) as session,
-        ):
-            await session.initialize()
-            result = await session.call_tool(name, args)
-        if result.isError:
-            raise RuntimeError(f"memory service tool error: {result.content[0].text}")
-        return result.content[0].text
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        }
+        init = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "clientInfo": {"name": "ichnos-cce", "version": "0.1.0"},
+            },
+        }
+        async with httpx.AsyncClient(timeout=30) as client:
+            await client.post(self._url, json=init, headers=headers)
+            await client.post(
+                self._url,
+                json={"jsonrpc": "2.0", "method": "notifications/initialized"},
+                headers=headers,
+            )
+            response = await client.post(
+                self._url,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "tools/call",
+                    "params": {"name": name, "arguments": args},
+                },
+                headers=headers,
+            )
+        body = response.json()
+        if "error" in body:
+            raise RuntimeError(f"memory service tool error: {body['error'].get('message')}")
+        return body["result"]["content"][0]["text"]
 
 
 def load_config(path: str | Path) -> dict[str, Any]:
@@ -101,6 +130,7 @@ def build_app_from_config(config_path: str | Path, binding: str | None = None):
 
 
 def build_http_app_from_config(config_path: str | Path):
+    from cce_server.adapters.memory import MemoryAdapter
     from cce_server.server import build_http_server
 
     config = load_config(config_path)
@@ -109,4 +139,12 @@ def build_http_app_from_config(config_path: str | Path):
         raise SystemExit("no tokens configured — the HTTP surface serves registered consumers only")
     registry = Registry.from_config(config)
     channels = build_channels(config.get("channels") or {})
-    return build_http_server(registry=registry, channels=channels, tokens=tokens)
+    mem_spec = (config.get("channels") or {}).get("memory", {})
+    memory_adapter = None
+    if mem_spec.get("enabled", True):
+        memory_adapter = MemoryAdapter(
+            caller=McpMemoryCaller(mem_spec.get("url", "http://127.0.0.1:8000/mcp"))
+        )
+    return build_http_server(
+        registry=registry, channels=channels, tokens=tokens, memory_adapter=memory_adapter
+    )

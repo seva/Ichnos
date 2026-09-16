@@ -49,7 +49,7 @@ async def test_search_maps_results_to_briefs():
 
     adapter = make_adapter(caller)
     briefs = await adapter.search("openclaw model chain", limit=5)
-    assert captured["name"] == "memory_retrieve_memory"
+    assert captured["name"] == "retrieve_memory"
     assert captured["args"]["query"] == "openclaw model chain"
     assert captured["args"]["limit"] == 5
     assert briefs[0]["content"].startswith("VixeYult model chain")
@@ -69,13 +69,14 @@ async def test_store_injects_gemini_provenance():
     adapter = make_adapter(caller)
     h = await adapter.store("operator prefers dark mode", tags=["prefs"], metadata={"topic": "ui"})
     assert h == "newhash"
-    assert captured["name"] == "memory_store_memory"
+    assert captured["name"] == "store_memory"
     assert captured["args"]["content"] == "operator prefers dark mode"
     assert captured["args"]["tags"] == ["prefs"]
     assert captured["args"]["metadata"]["topic"] == "ui"
     assert (
         captured["args"]["metadata"]["client"] == "gemini"
     )  # provenance injected, user metadata preserved
+    assert captured["args"]["client_hostname"] == "gemini"  # the service's native provenance field
 
 
 async def test_delete_calls_service_with_hash():
@@ -88,13 +89,13 @@ async def test_delete_calls_service_with_hash():
     adapter = make_adapter(caller)
     ok = await adapter.delete("abc123")
     assert ok is True
-    assert captured["name"] == "memory_delete_memory"
+    assert captured["name"] == "delete_memory"
     assert captured["args"] == {"content_hash": "abc123"}
 
 
 async def test_recall_maps_time_based_results():
     async def caller(name, args):
-        assert name == "memory_recall_memory"
+        assert name == "recall_memory"
         assert args == {"query": "last week", "n_results": 3}
         return FAKE_SEARCH_RESPONSE
 

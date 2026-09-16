@@ -25,8 +25,11 @@ def read(name: str) -> str:
 def test_scope_position_matches_reached_state():
     """AGENTS.md must state the current reached rung; no superseded framing."""
     agents = read("AGENTS.md")
-    assert "L2 reached (CCE MCP server live; first consumer opencode" in agents
-    assert "next rung is L3" in agents
+    assert (
+        "L3 reached (multi-channel: github + memory live; second consumer openclaw proven)"
+        in agents
+    )
+    assert "next rung is L4" in agents
     assert "against OpenClaw" not in agents
 
 

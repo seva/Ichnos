@@ -68,9 +68,9 @@ class FakeMemoryCaller:
 
     async def __call__(self, name: str, args: dict) -> str:
         self.calls.append((name, args))
-        if name == "memory_store_memory":
+        if name == "store_memory":
             return json.dumps({"success": True, "content_hash": "h1"})
-        if name == "memory_delete_memory":
+        if name == "delete_memory":
             return json.dumps({"success": True})
         return FAKE_SEARCH
 
@@ -171,7 +171,7 @@ async def test_gemini_memory_search_returns_briefs():
         result = await session.call_tool("memory_search", {"query": "model chain", "limit": 5})
         data = payload(result)
         assert data["briefs"][0]["content"] == "memory bri…"  # snippet_length=10 enforced
-        assert caller.calls[0][0] == "memory_retrieve_memory"
+        assert caller.calls[0][0] == "retrieve_memory"
 
 
 async def test_gemini_memory_store_injects_provenance():
@@ -185,7 +185,7 @@ async def test_gemini_memory_store_injects_provenance():
         data = payload(result)
         assert data["hash"] == "h1"
         name, args = caller.calls[0]
-        assert name == "memory_store_memory"
+        assert name == "store_memory"
         assert args["metadata"]["client"] == "gemini"
 
 

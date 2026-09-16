@@ -56,11 +56,11 @@ class MemoryAdapter:
         return _parse(raw)
 
     async def search(self, query: str, limit: int = 5) -> list[dict[str, Any]]:
-        parsed = await self._call("memory_retrieve_memory", {"query": query, "limit": limit})
+        parsed = await self._call("retrieve_memory", {"query": query, "limit": limit})
         return [_brief(e) for e in parsed.get("results", [])]
 
     async def recall(self, query: str, n_results: int = 5) -> list[dict[str, Any]]:
-        parsed = await self._call("memory_recall_memory", {"query": query, "n_results": n_results})
+        parsed = await self._call("recall_memory", {"query": query, "n_results": n_results})
         return [_brief(e) for e in parsed.get("results", [])]
 
     async def store(
@@ -73,11 +73,16 @@ class MemoryAdapter:
         meta = dict(metadata or {})
         meta[PROVENANCE_KEY] = provenance  # injected last: provenance is not client-forgeable
         parsed = await self._call(
-            "memory_store_memory",
-            {"content": content, "tags": tags or [], "metadata": meta},
+            "store_memory",
+            {
+                "content": content,
+                "tags": tags or [],
+                "metadata": meta,
+                "client_hostname": provenance,  # the service's native provenance field
+            },
         )
         return parsed.get("content_hash", "")
 
     async def delete(self, content_hash: str) -> bool:
-        parsed = await self._call("memory_delete_memory", {"content_hash": content_hash})
+        parsed = await self._call("delete_memory", {"content_hash": content_hash})
         return bool(parsed.get("success", False))
