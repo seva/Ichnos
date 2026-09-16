@@ -89,8 +89,8 @@ Must complete before any implementation code that depends on external interfaces
 
 <!-- TDD order: test task FIRST, then implementation task. -->
 
-- [ ] A1 `tests/test_memory_tools.py` — search (query → top-k briefs), store (text + tags + provenance `client: gemini`), delete (by hash), recall; service failure → explicit errors; no raw service errors escape
-- [ ] A2 `cce_server/adapters/memory.py` — MCP client to the memory service (streamable-http `127.0.0.1:8000`); search/store/delete/recall passthrough with brief mapping + provenance injection
+- [x] A1 `tests/test_memory_tools.py` — search (query → top-k briefs), store (text + tags + provenance `client: gemini`), delete (by hash), recall; service failure → explicit errors; no raw service errors escape
+- [x] A2 `cce_server/adapters/memory.py` — MCP client to the memory service (streamable-http `127.0.0.1:8000`); search/store/delete/recall passthrough with brief mapping + provenance injection
 - [ ] B1 `tests/test_scoping.py` extension — `summary` orthogonal to channel filtering; gemini = memory read/write; existing scopes regression-pinned
 - [ ] B2 `cce_server/registry.py` — capability dimension added
 - [ ] C1 `tests/test_http.py` — streamable-HTTP serves the toolset per consumer capability; bearer token → consumer per request; unknown token → no context data
