@@ -11,8 +11,8 @@ Must complete before any implementation code that depends on external interfaces
 - [x] `docs/channel-matrix.md`
   * Inventory the operator's context channels (Telegram, GitHub, email, browser sessions, memory stores, filesystem) with per-channel: API fast-path availability, auth mechanism and state, rate limits, and whether OS-level inspection is required
   * Compile retrieval precedence per channel: fast-path vs isolated-display fallback — a structural choice, not per-prompt
-- [ ] `docs/display-isolation.md` — **DEFERRED AS DEBT** (2026-09-15): trigger = first Phase 2 task; constraint set still moving (dedicated-profile ruling, VSS elevation sanction pending) — re-derive at trigger per Set-3 class. Probe result recorded: `sudo` exits 0 but produces no observable output (3 attempts) — elevation availability **UNVERIFIED**; treat Hyper-V check as sanction-gated until proven otherwise.
-  * Settle the display-isolation substrate: WSLg vs Hyper-V VM vs Docker+VNC, against the structural-isolation constraint (never the primary session's input devices or viewport)
+- [ ] `docs/display-isolation.md` — **DEFERRED AS DEBT (dormant)** (2026-09-15): original trigger (first Phase 2 task) fired but its consumer was withdrawn before derivation — WhatsApp integration deferred to its own tentative future decision (see deferred-decision issue). Re-derivation re-fires when a walled-garden tenant materializes or L4 work begins; the headless-first question raised during the aborted start (does an automated browser need a display at all?) is carried into the re-derivation question set.
+  * Settle the display-isolation substrate: WSLg vs Hyper-V vs Docker+VNC vs headless-on-host, against the structural-isolation constraint (never the primary session's input devices or viewport)
   * Record Hyper-V status (requires elevation — unverified); select the substrate that structurally guarantees isolation without it, or surface elevation as an owner sanction
   * Constraint added by auth-seeding: substrate must carry an authenticated control channel into the VM (stage-2 transport)
 - [ ] `docs/hitl-portal.md`
