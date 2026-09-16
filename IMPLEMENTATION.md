@@ -32,13 +32,20 @@ Must complete before any implementation code that depends on external interfaces
 
 **Goal:** A live MCP server serving the operator's context to OpenClaw on prompt — the L2 rung.
 
+**Adapter decision (2026-09-15):** first fast-path adapter = **GitHub** (RAROC ≈ 1.7 vs Telegram-bot 1.27: V5 — repo/issue/PR state is the context developer agents actually consume; both channels machine-verified; GitHub's content matches the primary consumer class). Telegram-bot follows as the second adapter.
+
 ### Tasks
 
-<!-- TDD order: test task FIRST, then implementation task. Task lists below are sketches — expanded into test-first tasks only after Phase 0 outputs pin the contracts they depend on. -->
+<!-- TDD order: test task FIRST, then implementation task. -->
 
-- [ ] *(expand after Phase 0)* server skeleton extension of `grok-research-mcp` FastMCP lineage
-- [ ] *(expand after Phase 0)* context store + per-consumer scoping
-- [ ] *(expand after Phase 0)* first fast-path channel adapter (channel chosen from the matrix)
+- [ ] `tests/test_channels.py` — ChannelState contract semantics: fresh-within-TTL serves cache (stale=False); past-TTL triggers live read bounded by timeout; live failure keeps last value + reason (explicit staleness); cold start = live-or-unavailable (no cached-serve)
+- [ ] `cce_server/channels.py` — ChannelConfig, ChannelReading, Channel (TTL/timeout logic, adapter protocol)
+- [ ] `tests/test_scoping.py` — consumer scoping: full → all channels; channels:[...] → intersection only; unregistered consumer → rejection with no context data; summary level → payload without raw data fields
+- [ ] `cce_server/registry.py` — ConsumerScope, Registry (from config), UnregisteredConsumer error
+- [ ] `tests/test_server.py` — FastMCP server builds only for a registered consumer binding (CCE_CONSUMER env at registration — client-declared identity never trusted); get_context tool exposed; empty channel set returns valid contract payload
+- [ ] `cce_server/server.py` — build_server(registry, channels, binding) → FastMCP app
+- [ ] *(next step)* GitHub fast-path adapter (`tests/test_github.py` first; httpx; mocks allowed — external third-party API)
+- [ ] *(next step)* consumer registration against OpenClaw gateway (proves the UNPROVEN gateway path — the L2 rung's remaining gap)
 
 **Verification:** OpenClaw retrieves live context on prompt in a real session, scoped per consumer; secrets never surfaced in tool output.
 
