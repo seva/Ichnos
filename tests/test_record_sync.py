@@ -1,0 +1,60 @@
+"""Record-sync enforcer (Revision escalation, fired 2026-09-15).
+
+The record-staleness class recurred twice (ARCHITECTURE.md stale at d9e17df;
+AGENTS.md/scope.md stale at 258886e). Per CYCLE.md step 5, the response to a
+recurrence is an executing enforcer, not another local repair. These tests run
+on every suite execution: a commit that advances the project's state without
+syncing the constitutional records fails here.
+
+Pin discipline: when a state change makes a rule below stale, updating the rule
+is part of the same commit as the state change — the test failing red is the
+gate that forces the sync.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def read(name: str) -> str:
+    return (ROOT / name).read_text(encoding="utf-8")
+
+
+def test_scope_position_matches_reached_state():
+    """AGENTS.md must state the current reached rung; no superseded framing."""
+    agents = read("AGENTS.md")
+    assert "L2 reached (CCE MCP server live; first consumer opencode" in agents
+    assert "next rung is L3" in agents
+    assert "against OpenClaw" not in agents
+
+
+def test_scope_md_carries_the_opencode_ruling_everywhere():
+    """scope.md must not retain the superseded OpenClaw-first framing in any band."""
+    scope = read("docs/scope.md")
+    assert "First: OpenClaw gateway" not in scope
+    assert "OpenClaw consumes it" not in scope
+    assert "opencode consumes it live" in scope
+    assert "First live consumer: **opencode**" in scope
+
+
+def test_substrate_options_include_headless_first():
+    """The display-isolation question set carries the headless-first question."""
+    scope = read("docs/scope.md")
+    assert "headless-on-host vs WSLg vs Hyper-V vs Docker+VNC" in scope
+
+
+def test_deferred_debt_pointers_name_their_issue():
+    """Debt pointers must name issue numbers — name-only references are unverifiable."""
+    impl = read("IMPLEMENTATION.md")
+    assert "WhatsApp integration deferred to its own tentative future decision (issue #3)" in impl
+
+
+def test_whatsapp_row_marks_structural_arguments():
+    """channel-matrix convention: argument claims are marked structural, not probed."""
+    matrix = read("docs/channel-matrix.md")
+    row = [line for line in matrix.splitlines() if "| WhatsApp |" in line]
+    assert len(row) == 1
+    assert "structural" in row[0]
+    assert "issue #3" in row[0]
