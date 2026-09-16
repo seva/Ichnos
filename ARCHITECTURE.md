@@ -51,30 +51,23 @@ Enforced at audit (METHODOLOGY.md Post-Phase Audit, item 5). Deviations must be 
 
 ## System Diagram
 
-Planned data flow (Phase 0 established the sources; `ingest/` and `detector/` are built in Phases 1–6).
+Planned data flow (Phase 0 establishes the sources and precedence; components are built in Phases 1–4).
 
 ```
-EXTERNAL (read-only)                                 PROJECT
+REGISTERED CONSUMERS (sanctioned, scoped)           ENGINE (this project)
 
-red.anthropic.com/2026/cvd   ── ledger.json ──┐
-  (PRIMARY: Mythos text,        payload.json   │
-   hash-verified)               findings/*.html│
-                                +preimage.json  │
-                                                ▼
-services.nvd.nist.gov ──── CVE text ───►  ingest/ (Phase 1) ──► corpus/manifest.jsonl
-  (maintainer/CNA text)        corroboration      │             {url,sha256,class,maintainer,…}
-                               + control text     │                       │
-api.github.com /advisories ─ GHSA text ───────────┘                       ▼
-  (maintainer text, authed gh)                                     corpus/features.parquet
-                                                                    (Phase 2, raw-text features)
-                                                                          │
-        detector/heldout.json (frozen, sha256-committed) ──────►  detector/ (Phase 3–4)
-                                                                          │
-                                                                          ▼
-                                                            reports/ (append-only): paired AUCs + CIs
+OpenClaw gateway ──┐                                ┌─ fast-path adapters ──── channel APIs
+web surfaces ──────┼── MCP ("context on prompt") ──► CCE MCP server ──┤   (docs/channel-matrix.md, Phase 0)
+local agents ──────┘    context scoped per consumer  (context store)  │
+                                                   └─ fallback: isolated virtual display executor
+                                                      (walled gardens; never the primary session's
+                                                       input devices or viewport)
+                                                      └─ HITL portal (browser/VNC) — auth checkpoints
+                                                         resolved by the operator
+auth seeding: OS credential store (DPAPI) → display session — secrets never in plaintext
 ```
 
-_Last verified: 2026-05-25_
+_Last verified: 2026-09-15 (planned; sources pinned by Phase 0)_
 
 ---
 
@@ -82,9 +75,9 @@ _Last verified: 2026-05-25_
 
 | Component | Responsibility | Key interface |
 |---|---|---|
-| _(none yet)_ | Phase 0 is discovery-only — no implementation code written | Components are specified in `IMPLEMENTATION.md` (Phases 1–6) and recorded here as they are built; each contract change updates this row in the same commit |
+| _(none yet)_ | CCE Phase 0 is discovery-only — no implementation code written | Components are specified in `IMPLEMENTATION.md` (Phases 1–4) and recorded here as they are built; each contract change updates this row in the same commit |
 
-_Last verified: 2026-05-25_
+_Last verified: 2026-09-15_
 
 ---
 
@@ -92,24 +85,23 @@ _Last verified: 2026-05-25_
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Primary data source | `red.anthropic.com/2026/cvd` JSON (`ledger.json`, `payload.json`, per-finding pages + `preimage.json`) | Only complete, SHA-3-512-verified source of Mythos-authored text; NVD/GHSA resolve only partially as of 2026-05-25 (`docs/nvd-api.md`, `docs/ghsa-api.md`). NVD/GHSA used for corroboration and control text only |
-| Corpus unit | one finding (`ANT-2026-XXXXXXXX`) | Each finding carries its own Mythos report; CVE/GHSA↔finding is many-to-many (`docs/mythos-advisories.md`) |
-| Confirmatory text scope | maintainer CVE/GHSA description for **both** Mythos and control classes (Option A) | Only scope where same-maintainer + held-out-maintainer isolates a Mythos trace from a source/author confound (`docs/text-scope.md`). Mixed scope (Mythos report vs maintainer control) rejected as confounded. **Pending operator ratification** |
-| External fetch | direct local HTTP; GitHub via authenticated `gh` | The prior web sandbox's GitHub-only egress policy made the corpus unbuildable; local network reaches all required hosts (`docs/dashboard-api.md`) |
+| Client protocol | MCP | Client-agnostic by invariant; registration pattern proven with `grok-research-mcp` (formalized in `docs/consumer-registration.md`, Phase 0) |
+| Retrieval precedence | API/protocol fast-path default; OS-level inspection as universal fallback | Handoff invariant; compiled per channel in `docs/channel-matrix.md` (Phase 0) — structural, not per-prompt |
+| Display isolation | Structural — separate virtual display substrate; never primary-session attachment | Terminal bound (`docs/scope.md`); substrate chosen by Phase 0 (`docs/display-isolation.md`) |
+| Adapter write posture | Read-only observers — no write-back to external channels | Owner sanction 2026-09-15, recorded on issue #2; a context engine with write access is an autonomous actor outside project scope |
+| Auth seeding | OS credential store only (DPAPI ladder); never plaintext on disk, in logs, or in tool output | Terminal bound (`docs/scope.md`); formalized in Phase 0 (`docs/auth-seeding.md`) |
+| Consumer access | Registered (owner-sanctioned) consumers only, scoped per consumer | Owner sanction 2026-09-15, recorded on issue #2; unregistered clients receive nothing |
 
-_Last verified: 2026-05-25_
+_Last verified: 2026-09-15_
 
 ---
 
 ## Constraints
 
-- **Network policy** must allowlist `red.anthropic.com`, `services.nvd.nist.gov`, and `api.github.com`. A GitHub-only egress policy (the prior web sandbox) blocks the dashboard and NVD and makes the corpus unbuildable.
-- **NVD**: ≤120-day query windows; 5 req / 30 s unauthenticated (50/30 s with a free API key). **GHSA**: authenticated `gh` (5,000/hr) vs 60/hr unauthenticated.
-- **No model fitting** until the corpus clears the `docs/power-analysis.md` floor (≥4–5 maintainers × ≥10 revealed findings + matched controls). Today: 27 findings across 15 maintainers (11 singletons) — underpowered; the held-out-maintainer AUC is not yet computable.
-- **Identifier retrievability is partial and time-dependent**; every corpus entry's identifier is verified retrievable at ingest, and absences are logged and skipped (never fabricated).
-- `detector/heldout.json` is frozen and its sha256 committed before any model fitting; verified on every validation run.
-- Both AUCs (random-split + held-out-maintainer) are reported **as a pair** with 95% CIs; a single AUC is rejected.
-- Features must be computable from raw text without LLM mediation (no mediated stylometry).
-- `reports/` is append-only; every corpus entry carries a logged URL + sha256 in `corpus/manifest.jsonl`.
+- **Secrets/session material** never leave the OS credential store; never logged or surfaced in tool or API output (`docs/scope.md`, Terminal bound).
+- **Fallback executor** never attaches to the primary session's input devices or viewport; isolation is enforced by the substrate, not process behavior.
+- **Context** is served only to registered consumers, scoped per consumer; adapters never write to external channels.
+- **Host**: Windows + WSL2 (Ubuntu) + Docker present; Hyper-V unverified (needs elevation) — Phase 0 settles the display substrate; elevation, if required, is an owner sanction.
+- **Auth states are time-dependent**: seeded sessions expire and walled gardens change; adapters isolate drift (Isolation of fragility) so it burns one module, not the engine.
 
-_Last verified: 2026-05-25_
+_Last verified: 2026-09-15_
