@@ -60,6 +60,7 @@ Rungs beyond L8 are far positions — heuristic shapes bounding the direction of
 | The fallback display executor never attaches to the primary session's input devices or viewport; isolation is enforced by the substrate (separate VM/display), not by process behavior | Host input integrity — a hijacked operator session is unrecoverable trust loss |
 | The engine observes operator context; it never writes back to external channels. Read-only is a standing property of every adapter | External-channel integrity — a context engine with write access is an autonomous actor in the operator's name, outside this project's scope |
 | Context is served only to registered (owner-sanctioned) consumers, scoped per consumer | Personal-data boundary — context served to an unregistered client cannot be recalled |
+| The public endpoint (Gemini Connected App path) is declared design: localhost token-auth → Tailscale Funnel → public at the Canada launch of custom apps; it exposes a per-consumer capability-scoped toolset, never the full stdio surface | Personal-data boundary — the endpoint's exposure is an evolution path, not an accident |
 | The operator-scale terminal position lives only here, compiled and Owner-owned; the cycle never models it internally | Operator margin — a project-scale cycle that models its own end unbounds the terminal position and removes the filter |
 
 | Commitment class | Refinement level (PRAROC-n, HORIZONS.md) | Terms below the cut, registered non-drifting |

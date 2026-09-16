@@ -8,7 +8,7 @@ _Last verified: 2026-09-15_
 
 ## Registration pattern
 
-Two consumer classes exist today; both registration paths are now exercised:
+Two consumer classes exist today; both registration paths are now exercised. Third: browser-consumer path (Tailscale Funnel → Gemini custom Connected App), planned Phase 4 (issue #4) — observed discrepancy recorded: Gemini's help article claims custom MCP apps are US-only, but the Custom apps UI is live on a Canadian account (observed 2026-09-16); documentation stale relative to rollout.
 
 | Path | Mechanism | Evidence |
 |---|---|---|

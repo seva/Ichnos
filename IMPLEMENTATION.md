@@ -81,15 +81,31 @@ Must complete before any implementation code that depends on external interfaces
 
 ---
 
-## Phase 4 — Multi-consumer
+## Phase 4 — Multi-consumer: Gemini web UI via Tailscale Funnel (issue #4)
 
-**Goal:** A second consumer class (web surface) retrieves scoped context; the engine holds its guarantees under more than one client.
+**Goal:** The Gemini web UI consumes ichnos memory read/write via `@ichnos` — the engine itself registered as a Gemini custom Connected App, exposed over Tailscale Funnel. Forecast V=4, P=0.75, C=3.
 
 ### Tasks
 
-- [ ] *(expand after Phase 0)* second consumer registration + scoping tests
+<!-- TDD order: test task FIRST, then implementation task. -->
 
-**Verification:** Both consumer classes retrieve correctly scoped context; an unregistered client receives nothing.
+- [ ] A1 `tests/test_memory_tools.py` — search (query → top-k briefs), store (text + tags + provenance `client: gemini`), delete (by hash), recall; service failure → explicit errors; no raw service errors escape
+- [ ] A2 `cce_server/adapters/memory.py` — MCP client to the memory service (streamable-http `127.0.0.1:8000`); search/store/delete/recall passthrough with brief mapping + provenance injection
+- [ ] B1 `tests/test_scoping.py` extension — `summary` orthogonal to channel filtering; gemini = memory read/write; existing scopes regression-pinned
+- [ ] B2 `cce_server/registry.py` — capability dimension added
+- [ ] C1 `tests/test_http.py` — streamable-HTTP serves the toolset per consumer capability; bearer token → consumer per request; unknown token → no context data
+- [ ] C2 `config.py`/`server.py` — HTTP mode (port 8001) + token→consumer map in `cce.json`; stdio mode unchanged
+- [ ] C3 **state-advance commit** — memory channel live ⇒ L3 reached ⇒ AGENTS.md + scope.md + record-sync rules updated in the same commit
+- [ ] D1 Tailscale Funnel: enable public funnel for port 8001; cleanup stale serve rule (→ 4096, no listener); verify external reachability + TLS
+- [ ] D2 Minimal OAuth 2.1 layer: `/.well-known` metadata + `/authorize` (operator one-time-code consent) + `/token` (static client ID/secret); unknown clients rejected
+- [ ] D3 Registration: ts.net URL → Custom apps for Spark → Next
+- [ ] E1 End-to-end manual test: `@ichnos <prompt>` → memory-informed answer; store-verify-search-delete round-trip from the real UI; gemini token cannot reach github; secret scan; funnel-off degrades visibly
+
+**Verification:** the five E1 checks hold in the real Gemini UI. Until then: provisional only.
+
+---
+
+## Open Questions
 
 ---
 
