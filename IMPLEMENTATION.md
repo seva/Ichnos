@@ -44,7 +44,8 @@ Must complete before any implementation code that depends on external interfaces
 - [x] `cce_server/registry.py` — ConsumerScope, Registry (from config), UnregisteredConsumer error
 - [x] `tests/test_server.py` — FastMCP server builds only for a registered consumer binding (CCE_CONSUMER env at registration — client-declared identity never trusted); get_context tool exposed and called through the real tool path; empty channel set returns valid contract payload (repaired per audit G1/G2: seam deleted, tests use `app.call_tool`)
 - [x] `cce_server/server.py` — build_server(registry, channels, binding) → FastMCP app
-- [ ] *(next step)* GitHub fast-path adapter (`tests/test_github.py` first; httpx; mocks allowed — external third-party API)
+- [x] `tests/test_github.py` — adapter tests first: context shape, bearer auth, empty results, HTTP error propagation, token resolution ladder (explicit → env → gh CLI; failure/empty modes) — respx mocks (external third-party API)
+- [x] `cce_server/adapters/github.py` — GitHubAdapter: assigned open issues + review-requested PRs + user, brief mapping, token never logged or surfaced
 - [ ] *(next step)* server config wiring (registry + channel configs loaded from a config file — `__main__.py` is currently a stub that cannot start; this task owns making the entry point real)
 - [ ] *(next step)* consumer registration against OpenClaw gateway (proves the UNPROVEN gateway path — the L2 rung's remaining gap)
 
