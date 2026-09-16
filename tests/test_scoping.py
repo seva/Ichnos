@@ -51,3 +51,32 @@ def test_scope_changes_are_config_only():
 def test_unknown_scope_level_in_config_is_rejected():
     with pytest.raises(ValueError):
         Registry.from_config({"consumers": {"bad": {"scope": "everything"}}})
+
+
+def make_capability_registry() -> Registry:
+    return Registry.from_config(
+        {
+            "consumers": {
+                "gemini": {"scope": "channels", "channels": ["memory"], "writable": ["memory"]},
+                "openclaw": {"scope": "full"},
+            }
+        }
+    )
+
+
+def test_writable_defaults_to_read_only():
+    """Least privilege: a consumer with no 'writable' list gets read-only on everything."""
+    scope = make_capability_registry().resolve("openclaw")
+    assert scope.can_write("memory") is False
+    assert scope.can_write("github") is False
+
+
+def test_writable_channels_explicitly_granted():
+    scope = make_capability_registry().resolve("gemini")
+    assert scope.can_write("memory") is True
+    assert scope.can_write("github") is False  # write grant does not widen read visibility
+
+
+def test_write_grant_does_not_widen_read_visibility():
+    scope = make_capability_registry().resolve("gemini")
+    assert scope.allowed_channels(["memory", "github"]) == ["memory"]

@@ -15,6 +15,9 @@ class ConsumerScope:
     consumer: str
     level: str  # "full" | "channels" | "summary"
     channels: list[str] | None = None
+    writable: list[str] | None = (
+        None  # channels where write tools are exposed; None/empty = read-only
+    )
 
     @property
     def summary(self) -> bool:
@@ -25,6 +28,10 @@ class ConsumerScope:
             allowed = set(self.channels or [])
             return [c for c in requested if c in allowed]
         return list(requested)
+
+    def can_write(self, channel: str) -> bool:
+        """Least privilege: write requires an explicit per-consumer grant."""
+        return channel in (self.writable or [])
 
 
 @dataclass(frozen=True)
@@ -42,6 +49,7 @@ class Registry:
                 consumer=name,
                 level=level,
                 channels=spec.get("channels") if level == "channels" else None,
+                writable=spec.get("writable") or [],
             )
         return cls(consumers=consumers)
 
