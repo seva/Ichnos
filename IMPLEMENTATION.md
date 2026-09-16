@@ -38,13 +38,14 @@ Must complete before any implementation code that depends on external interfaces
 
 <!-- TDD order: test task FIRST, then implementation task. -->
 
-- [ ] `tests/test_channels.py` — ChannelState contract semantics: fresh-within-TTL serves cache (stale=False); past-TTL triggers live read bounded by timeout; live failure keeps last value + reason (explicit staleness); cold start = live-or-unavailable (no cached-serve)
-- [ ] `cce_server/channels.py` — ChannelConfig, ChannelReading, Channel (TTL/timeout logic, adapter protocol)
-- [ ] `tests/test_scoping.py` — consumer scoping: full → all channels; channels:[...] → intersection only; unregistered consumer → rejection with no context data; summary level → payload without raw data fields
-- [ ] `cce_server/registry.py` — ConsumerScope, Registry (from config), UnregisteredConsumer error
-- [ ] `tests/test_server.py` — FastMCP server builds only for a registered consumer binding (CCE_CONSUMER env at registration — client-declared identity never trusted); get_context tool exposed; empty channel set returns valid contract payload
-- [ ] `cce_server/server.py` — build_server(registry, channels, binding) → FastMCP app
+- [x] `tests/test_channels.py` — ChannelState contract semantics: fresh-within-TTL serves cache (stale=False); past-TTL triggers live read bounded by timeout; live failure keeps last value + reason (explicit staleness); cold start = live-or-unavailable (no cached-serve)
+- [x] `cce_server/channels.py` — ChannelConfig, ChannelReading, Channel (TTL/timeout logic, adapter protocol)
+- [x] `tests/test_scoping.py` — consumer scoping: full → all channels; channels:[...] → intersection only; unregistered consumer → rejection with no context data; summary level → payload without raw data fields
+- [x] `cce_server/registry.py` — ConsumerScope, Registry (from config), UnregisteredConsumer error
+- [x] `tests/test_server.py` — FastMCP server builds only for a registered consumer binding (CCE_CONSUMER env at registration — client-declared identity never trusted); get_context tool exposed and called through the real tool path; empty channel set returns valid contract payload (repaired per audit G1/G2: seam deleted, tests use `app.call_tool`)
+- [x] `cce_server/server.py` — build_server(registry, channels, binding) → FastMCP app
 - [ ] *(next step)* GitHub fast-path adapter (`tests/test_github.py` first; httpx; mocks allowed — external third-party API)
+- [ ] *(next step)* server config wiring (registry + channel configs loaded from a config file — `__main__.py` is currently a stub that cannot start; this task owns making the entry point real)
 - [ ] *(next step)* consumer registration against OpenClaw gateway (proves the UNPROVEN gateway path — the L2 rung's remaining gap)
 
 **Verification:** OpenClaw retrieves live context on prompt in a real session, scoped per consumer; secrets never surfaced in tool output.

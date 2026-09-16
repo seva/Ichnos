@@ -46,3 +46,8 @@ def test_scope_changes_are_config_only():
     """Scope comes from registration config only — nothing client-supplied can widen it."""
     scope = make_registry().resolve("web-cald")
     assert scope.allowed_channels(["github", "telegram"]) == ["github"]
+
+
+def test_unknown_scope_level_in_config_is_rejected():
+    with pytest.raises(ValueError):
+        Registry.from_config({"consumers": {"bad": {"scope": "everything"}}})

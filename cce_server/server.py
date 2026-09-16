@@ -16,7 +16,7 @@ def build_server(*, registry: Registry, channels: list[Channel], binding: str) -
 
     app: FastMCP = FastMCP("ichnos-cce")
 
-    async def get_context(channels_requested: list[str] | None = None) -> dict[str, Any]:
+    async def serve_context(channels_requested: list[str] | None = None) -> dict[str, Any]:
         requested = (
             channels_requested
             if channels_requested is not None
@@ -38,11 +38,9 @@ def build_server(*, registry: Registry, channels: list[Channel], binding: str) -
             "channels": readings,
         }
 
-    app.get_context_fn = get_context  # test seam; tool registration uses the same coroutine
-
     @app.tool()
     async def get_context(channels_requested: list[str] | None = None) -> dict[str, Any]:
         """Retrieve the operator's cross-channel context, scoped to this registration."""
-        return await get_context(channels_requested)
+        return await serve_context(channels_requested)
 
     return app

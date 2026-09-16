@@ -99,3 +99,11 @@ async def test_payload_omits_data_when_summary():
     p = reading.to_payload(include_data=False)
     assert "data" not in p
     assert p["as_of"] == 1.0
+
+
+async def test_payload_emits_data_and_last_as_of_when_present():
+    reading = ChannelReading(as_of=2.0, stale=True, data={"k": "v"}, last_as_of=1.0)
+    p = reading.to_payload()
+    assert p["data"] == {"k": "v"}
+    assert p["last_as_of"] == 1.0
+    assert p["stale"] is True

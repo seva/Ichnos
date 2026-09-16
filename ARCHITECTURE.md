@@ -75,7 +75,7 @@ _Last verified: 2026-09-15 (planned; sources pinned by Phase 0)_
 
 | Component | Responsibility | Key interface |
 |---|---|---|
-| _(none yet)_ | CCE Phase 0 is discovery-only — no implementation code written | Components are specified in `IMPLEMENTATION.md` (Phases 1–4) and recorded here as they are built; each contract change updates this row in the same commit |
+| `cce_server` (MCP server) | Serves `get_context` over MCP: per-channel TTL/timeout/staleness contract, server-side per-consumer scoping from registration config; identity from the `CCE_CONSUMER` registration binding, never client-supplied | `build_server(registry, channels, binding) -> FastMCP`; tool `get_context(channels_requested?) -> {consumer, summary, generated_at, channels: {name: {as_of, stale, data?, unavailable?, reason?, last_as_of?}}}`; console script `ichnos-cce` (stdio; config wiring pending — Phase 1 adapter task) |
 
 _Last verified: 2026-09-15_
 
