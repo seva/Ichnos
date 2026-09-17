@@ -140,7 +140,7 @@ def build_app_from_config(config_path: str | Path, binding: str | None = None):
 
 def build_http_app_from_config(config_path: str | Path):
     from cce_server.adapters.memory import MemoryAdapter
-    from cce_server.server import build_http_server
+    from cce_server.server import build_http_asgi
 
     config = load_config(config_path)
     tokens = config.get("tokens") or {}
@@ -154,7 +154,7 @@ def build_http_app_from_config(config_path: str | Path):
         memory_adapter = MemoryAdapter(
             caller=McpMemoryCaller(mem_spec.get("url", "http://127.0.0.1:8000/mcp"))
         )
-    return build_http_server(
+    return build_http_asgi(
         registry=registry,
         channels=channels,
         tokens=tokens,

@@ -1,4 +1,4 @@
-"""Config wiring tests for the HTTP path: build_http_app_from_config builds the full OAuth + Funnel app."""
+"""Config wiring tests: one JSON config builds the full app (stdio and HTTP paths)."""
 
 from __future__ import annotations
 
@@ -6,7 +6,10 @@ import json
 
 import pytest
 
-from cce_server.config import build_http_app_from_config, load_config
+from cce_server.adapters.memory import MemoryAdapter
+from cce_server.config import build_channels, load_config
+from cce_server.registry import Registry
+from cce_server.server import build_http_server, build_server
 
 CONFIG = {
     "consumers": {
@@ -54,9 +57,42 @@ def test_load_config_parses(config_file):
     assert "gemini-spark" in config["oauth_clients"]
 
 
-def test_build_http_app_exposes_all_tools(config_file):
-    """The HTTP path serves the full toolset — identity via the actual request (test_http.py covers the real path)."""
-    app = build_http_app_from_config(config_file)
+def test_load_config_missing_file_raises(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        load_config(tmp_path / "nope.json")
+
+
+def test_build_channels_wires_memory_as_query_driven():
+    channels = build_channels(CONFIG["channels"])
+    by_name = {c.config.name: c for c in channels}
+    assert by_name["memory"].config.query_driven is True
+    assert by_name["github"].config.query_driven is False
+
+
+def test_disabled_channels_not_wired():
+    channels = build_channels({"github": {"enabled": False}})
+    assert len(channels) == 0
+
+
+def test_unknown_channel_name_rejected():
+    with pytest.raises(ValueError, match="mystery"):
+        build_channels({"mystery": {"enabled": True}})
+
+
+def test_build_http_server_with_oauth_and_memory(config_file):
+    """build_http_server returns FastMCP with the full toolset when memory_adapter is passed."""
+    registry = Registry.from_config(CONFIG)
+    channels = build_channels(CONFIG["channels"])
+    adapter = MemoryAdapter(caller=lambda name, args: json.dumps({"results": [], "success": True}))
+    app = build_http_server(
+        registry=registry,
+        channels=channels,
+        tokens=CONFIG["tokens"],
+        memory_adapter=adapter,
+        allowed_hosts=CONFIG["allowed_hosts"],
+        public_url=CONFIG["public_url"],
+        oauth_clients=CONFIG["oauth_clients"],
+    )
     tools = {t.name for t in __import__("asyncio").run(app.list_tools())}
     assert tools == {
         "get_context",
@@ -67,19 +103,29 @@ def test_build_http_app_exposes_all_tools(config_file):
     }
 
 
-def test_missing_public_url_means_no_oauth(config_file):
-    """When public_url is absent, the app has no OAuth surface — local-only."""
-    cfg_no_url = {k: v for k, v in CONFIG.items() if k != "public_url"}
-    p = config_file.parent / "nourl.json"
-    p.write_text(json.dumps(cfg_no_url), encoding="utf-8")
-    app = build_http_app_from_config(p)
+def test_build_http_server_without_public_url(config_file):
+    """No public_url → no OAuth surface — local-only, but still serves."""
+    registry = Registry.from_config(CONFIG)
+    channels = build_channels(CONFIG["channels"])
+    app = build_http_server(registry=registry, channels=channels, tokens=CONFIG["tokens"])
     tools = {t.name for t in __import__("asyncio").run(app.list_tools())}
-    assert "get_context" in tools  # still serves, but without auth surface
+    assert "get_context" in tools
 
 
-def test_no_tokens_rejects_http_build(config_file):
-    cfg_no_tokens = {k: v for k, v in CONFIG.items() if k != "tokens"}
-    p = config_file.parent / "notokens.json"
-    p.write_text(json.dumps(cfg_no_tokens), encoding="utf-8")
+def test_build_server_stdio_returns_fastmcp():
+    registry = Registry.from_config(CONFIG)
+    channels = build_channels(CONFIG["channels"])
+    app = build_server(registry=registry, channels=channels, binding="opencode")
+    tools = {t.name for t in __import__("asyncio").run(app.list_tools())}
+    assert "get_context" in tools
+
+
+def test_no_tokens_rejects_http_build(tmp_path):
+    """build_http_app_from_config without tokens → SystemExit (the HTTP surface requires auth)."""
+    from cce_server.config import build_http_app_from_config
+
+    cfg = {k: v for k, v in CONFIG.items() if k != "tokens"}
+    p = tmp_path / "notokens.json"
+    p.write_text(json.dumps(cfg), encoding="utf-8")
     with pytest.raises(SystemExit):
         build_http_app_from_config(p)

@@ -231,3 +231,83 @@ def build_http_server(
         ledger=ledger,
     )
     return app
+
+
+def build_http_asgi(
+    **kwargs: Any,
+):
+    """Deployment wrapper: build_http_server + discovery aliases + health/diag routes.
+    Returns the ASGI Starlette app for uvicorn/deployment."""
+    app = build_http_server(**kwargs)
+    return _with_discovery_aliases(app, kwargs.get("public_url"))
+
+
+def _with_discovery_aliases(app: FastMCP, public_url: str | None):
+    """Wrap the streamable-HTTP Starlette app with the discovery paths that
+    some MCP clients probe but the SDK's auth routes don't serve:
+    - /.well-known/openid-configuration (OpenID Connect discovery alias)
+    - /.well-known/oauth-protected-resource/mcp (RFC 9728 path-scoped metadata)
+    - /health (reachability probe that returns 200 without auth)"""
+    from starlette.responses import JSONResponse
+    from starlette.routing import Route
+
+    http_app = app.streamable_http_app()
+    if not public_url:
+        return http_app
+
+    issuer = public_url.rstrip("/")
+
+    async def openid_config(request):
+        return JSONResponse(
+            {
+                "issuer": issuer + "/",
+                "authorization_endpoint": issuer + "/authorize",
+                "token_endpoint": issuer + "/token",
+                "registration_endpoint": issuer + "/register",
+                "response_types_supported": ["code"],
+                "grant_types_supported": ["authorization_code", "refresh_token"],
+                "code_challenge_methods_supported": ["S256"],
+                "token_endpoint_auth_methods_supported": [
+                    "client_secret_post",
+                    "client_secret_basic",
+                ],
+            }
+        )
+
+    async def protected_resource_mcp(request):
+        return JSONResponse(
+            {
+                "resource": issuer + "/mcp",
+                "authorization_servers": [issuer + "/"],
+                "bearer_methods_supported": ["header"],
+            }
+        )
+
+    async def health(request):
+        return JSONResponse({"status": "ok"})
+
+    async def diag(request):
+        return JSONResponse(
+            {
+                "remote_addr": request.client.host if request.client else None,
+                "user_agent": request.headers.get("user-agent"),
+                "host": request.headers.get("host"),
+                "sni": request.url.scheme + "://" + (request.headers.get("host") or ""),
+                "method": request.method,
+                "path": request.url.path,
+            }
+        )
+
+    http_app.routes.extend(
+        [
+            Route("/.well-known/openid-configuration", openid_config, methods=["GET"]),
+            Route(
+                "/.well-known/oauth-protected-resource/mcp",
+                protected_resource_mcp,
+                methods=["GET"],
+            ),
+            Route("/health", health, methods=["GET"]),
+            Route("/diag", diag, methods=["GET"]),
+        ]
+    )
+    return http_app
