@@ -115,6 +115,13 @@ def build_channels(channels_config: dict[str, Any]) -> list[Channel]:
     return channels
 
 
+def _ledger_for(config_path: str | Path):
+    """Provenance ledger lives beside the config file — append-only, engine-owned."""
+    from cce_server.adapters.memory import ProvenanceLedger
+
+    return ProvenanceLedger(Path(os.path.expanduser(str(config_path))).parent / "provenance.jsonl")
+
+
 def build_app_from_config(config_path: str | Path, binding: str | None = None):
     config = load_config(config_path)
     binding = binding or os.environ.get("CCE_CONSUMER")
@@ -126,7 +133,9 @@ def build_app_from_config(config_path: str | Path, binding: str | None = None):
     channels = build_channels(config.get("channels") or {})
     from cce_server.server import build_server
 
-    return build_server(registry=registry, channels=channels, binding=binding)
+    return build_server(
+        registry=registry, channels=channels, binding=binding, ledger=_ledger_for(config_path)
+    )
 
 
 def build_http_app_from_config(config_path: str | Path):
@@ -153,4 +162,5 @@ def build_http_app_from_config(config_path: str | Path):
         allowed_hosts=config.get("allowed_hosts"),
         public_url=config.get("public_url"),
         oauth_clients=config.get("oauth_clients"),
+        ledger=_ledger_for(config_path),
     )

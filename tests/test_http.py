@@ -7,6 +7,8 @@ headers, exactly as the Funnel-exposed deployment will carry them)."""
 from __future__ import annotations
 
 import json
+import pathlib
+import tempfile
 from contextlib import asynccontextmanager
 
 import httpx
@@ -81,13 +83,14 @@ def payload(result):
     return json.loads(result.content[0].text)
 
 
-def build_app(caller: FakeMemoryCaller | None = None):
+def build_app(caller: FakeMemoryCaller | None = None, ledger=None):
     caller = caller or FakeMemoryCaller()
     app = build_http_server(
         registry=make_registry(),
         channels=make_channels(),
         tokens=TOKENS,
         memory_adapter=MemoryAdapter(caller=caller),
+        ledger=ledger,
     )
     http_app = (
         app.streamable_http_app()
@@ -171,7 +174,47 @@ async def test_gemini_memory_search_returns_briefs():
         result = await session.call_tool("memory_search", {"query": "model chain", "limit": 5})
         data = payload(result)
         assert data["briefs"][0]["content"] == "memory bri…"  # snippet_length=10 enforced
+        assert data["briefs"][0]["client"] == "pre-ledger"  # no ledger -> sealed epoch
         assert caller.calls[0][0] == "retrieve_memory"
+
+
+async def test_ledger_surfaces_provenance_on_briefs():
+    """Grok's acceptance bar 5: search/recall payloads include the client label per brief."""
+    from cce_server.adapters.memory import ProvenanceLedger
+
+    caller = FakeMemoryCaller()
+    ledger = ProvenanceLedger(temp_path("prov.jsonl"))
+    ledger.record("h1", "grok")
+    http_app, _ = build_app(caller, ledger=ledger)
+    async with open_session(http_app, token="gemini-token") as session:
+        await session.initialize()
+        result = await session.call_tool("memory_search", {"query": "model chain", "limit": 5})
+        data = payload(result)
+        assert data["briefs"][0]["client"] == "grok"  # hash h1 → ledger lookup → grok
+
+
+def temp_path(name: str):
+
+    return pathlib.Path(tempfile.mkdtemp()) / name
+
+
+async def test_grok_store_records_provenance_in_ledger():
+    """A grok-token store lands in the ledger with client=grok — the identity split proof."""
+    from cce_server.adapters.memory import ProvenanceLedger
+
+    caller = FakeMemoryCaller()
+    ledger = ProvenanceLedger(temp_path("prov-store.jsonl"))
+    http_app, _ = build_app(caller, ledger=ledger)
+    async with open_session(http_app, token="gemini-token") as session:
+        await session.initialize()
+        result = await session.call_tool(
+            "memory_store", {"content": "grok-authored fact", "tags": []}
+        )
+        data = payload(result)
+        assert data["hash"] == "h1"
+        assert data["provenance"] == "gemini"
+        # the ledger records the consumer, not the OAuth client_id
+        assert ledger.lookup("h1") == "gemini"
 
 
 async def test_gemini_memory_store_injects_provenance():

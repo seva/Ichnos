@@ -12,7 +12,7 @@ from mcp.server.fastmcp import Context, FastMCP
 from mcp.shared.auth import OAuthClientInformationFull
 from pydantic import AnyHttpUrl
 
-from cce_server.adapters.memory import MemoryAdapter
+from cce_server.adapters.memory import MemoryAdapter, ProvenanceLedger, enrich_briefs
 from cce_server.auth import StaticOAuthProvider
 from cce_server.channels import Channel
 from cce_server.registry import Registry
@@ -41,6 +41,7 @@ def _register_tools(
     channels: list[Channel],
     memory_adapter: MemoryAdapter | None,
     resolve: Resolver,
+    ledger: ProvenanceLedger | None = None,
 ) -> None:
     def current_scope(ctx: Context | None):
         return registry.resolve(resolve(ctx))
@@ -88,7 +89,7 @@ def _register_tools(
         scope = current_scope(ctx)
         if not scope.allowed_channels(["memory"]):
             raise PermissionError("memory is not in this consumer's scope")
-        briefs = await memory_adapter.search(query, limit=limit)
+        briefs = enrich_briefs(await memory_adapter.search(query, limit=limit), ledger)
         for b in briefs:
             b["content"] = _snip(b["content"], scope.snippet_length)
         return {"briefs": briefs}
@@ -99,7 +100,7 @@ def _register_tools(
         scope = current_scope(ctx)
         if not scope.allowed_channels(["memory"]):
             raise PermissionError("memory is not in this consumer's scope")
-        briefs = await memory_adapter.recall(query, n_results=n_results)
+        briefs = enrich_briefs(await memory_adapter.recall(query, n_results=n_results), ledger)
         for b in briefs:
             b["content"] = _snip(b["content"], scope.snippet_length)
         return {"briefs": briefs}
@@ -113,6 +114,8 @@ def _register_tools(
         if not scope.can_write("memory"):
             raise PermissionError("no write grant on memory for this consumer")
         h = await memory_adapter.store(content, tags=tags, provenance=scope.consumer)
+        if ledger is not None and h:
+            ledger.record(h, scope.consumer)
         return {"hash": h, "provenance": scope.consumer}
 
     @app.tool()
@@ -131,6 +134,7 @@ def build_server(
     binding: str,
     memory_adapter: MemoryAdapter | None = None,
     allowed_hosts: list[str] | None = None,
+    ledger: ProvenanceLedger | None = None,
 ) -> FastMCP:
     """stdio mode: one process, one consumer — identity from the registration binding."""
     registry.resolve(binding)  # UnregisteredConsumer -> refuses to build
@@ -146,7 +150,9 @@ def build_server(
             else None
         ),
     )
-    _register_tools(app, registry, channels, memory_adapter, resolve=lambda ctx: binding)
+    _register_tools(
+        app, registry, channels, memory_adapter, resolve=lambda ctx: binding, ledger=ledger
+    )
     return app
 
 
@@ -161,6 +167,7 @@ def build_http_server(
     port: int = 8001,
     public_url: str | None = None,
     oauth_clients: dict[str, dict[str, Any]] | None = None,
+    ledger: ProvenanceLedger | None = None,
 ) -> FastMCP:
     """HTTP mode: many consumers, one endpoint — identity resolved per request
     from the Authorization bearer token against the registration's token map.
@@ -221,5 +228,6 @@ def build_http_server(
         channels,
         memory_adapter,
         resolve=lambda ctx: _consumer_from_token(ctx, tokens),
+        ledger=ledger,
     )
     return app

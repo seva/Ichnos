@@ -80,3 +80,54 @@ def test_writable_channels_explicitly_granted():
 def test_write_grant_does_not_widen_read_visibility():
     scope = make_capability_registry().resolve("gemini")
     assert scope.allowed_channels(["memory", "github"]) == ["memory"]
+
+
+def make_split_registry() -> Registry:
+    """The post-split consumer set: grok and claude as distinct identities."""
+    return Registry.from_config(
+        {
+            "consumers": {
+                "gemini": {
+                    "scope": "channels",
+                    "channels": ["memory"],
+                    "writable": ["memory"],
+                    "snippet_length": 200,
+                },
+                "grok": {
+                    "scope": "channels",
+                    "channels": ["memory"],
+                    "writable": ["memory"],
+                    "snippet_length": 200,
+                },
+                "claude": {
+                    "scope": "channels",
+                    "channels": ["memory"],
+                    "writable": ["memory"],
+                    "snippet_length": 200,
+                },
+            }
+        }
+    )
+
+
+def test_grok_consumer_resolves_with_parity():
+    scope = make_split_registry().resolve("grok")
+    assert scope.allowed_channels(["memory"]) == ["memory"]
+    assert scope.can_write("memory") is True
+    assert scope.snippet_length == 200
+
+
+def test_claude_consumer_resolves_with_parity():
+    scope = make_split_registry().resolve("claude")
+    assert scope.allowed_channels(["memory"]) == ["memory"]
+    assert scope.can_write("memory") is True
+
+
+def test_identity_split_resolves_per_consumer():
+    """Distinct consumers, same store: resolution is per-consumer, never shared."""
+    reg = make_split_registry()
+    assert reg.resolve("grok").consumer == "grok"
+    assert reg.resolve("claude").consumer == "claude"
+    assert reg.resolve("gemini").consumer == "gemini"
+    with pytest.raises(UnregisteredConsumer):
+        reg.resolve("gemini-spark")  # the OAuth client_id is not a consumer
