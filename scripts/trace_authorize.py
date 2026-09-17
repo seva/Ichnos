@@ -15,7 +15,9 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def post_json(url, body):
-    req = urllib.request.Request(url, data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
+    req = urllib.request.Request(
+        url, data=json.dumps(body).encode(), headers={"Content-Type": "application/json"}
+    )
     with urllib.request.urlopen(req) as r:
         return json.loads(r.read())
 

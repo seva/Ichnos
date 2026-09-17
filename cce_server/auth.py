@@ -71,8 +71,6 @@ class StaticOAuthProvider(OAuthAuthorizationServerProvider):
         self._clients: dict[str, OAuthClientInformationFull] = {}
         self._codes: dict[str, IssuedCode] = {}
         self._tokens: dict[str, IssuedToken] = {}
-        for client_id, spec in (static_clients or {}).items():
-            self._runtime_tokens[f"__static__{client_id}"] = spec.get("consumer", "gemini")
 
     async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
         return self._clients.get(client_id)
@@ -99,21 +97,6 @@ class StaticOAuthProvider(OAuthAuthorizationServerProvider):
         if params.state:
             location += f"&state={params.state}"
         return location
-
-    async def ensure_static_client(self, spec: dict[str, Any]) -> OAuthClientInformationFull:
-        """Pre-register a static client (id/secret/redirect from config) so the
-        Advanced credentials path works without DCR."""
-        client = OAuthClientInformationFull(
-            client_id=spec["client_id"],
-            client_secret=spec["client_secret"],
-            redirect_uris=[spec["redirect_uri"]],
-            grant_types=["authorization_code", "refresh_token"],
-            response_types=["code"],
-            token_endpoint_auth_method="client_secret_post",
-            client_name="Gemini Spark (static)",
-        )
-        await self.register_client(client)
-        return client
 
     async def load_authorization_code(
         self, client: OAuthClientInformationFull, authorization_code: str

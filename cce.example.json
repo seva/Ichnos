@@ -1,43 +1,25 @@
 {
   "consumers": {
-    "opencode": {
-      "scope": "full"
-    },
-    "openclaw": {
-      "scope": "full"
-    },
-    "gemini": {
-      "scope": "channels",
-      "channels": [
-        "memory"
-      ],
-      "writable": [
-        "memory"
-      ]
-    }
+    "opencode": { "scope": "full" },
+    "openclaw": { "scope": "full" },
+    "gemini": { "scope": "channels", "channels": ["memory"], "writable": ["memory"], "snippet_length": 200 }
   },
   "tokens": {
     "<generated-token-1>": "opencode",
     "<generated-token-2>": "openclaw",
     "<generated-token-3>": "gemini"
   },
-  "channels": {
-    "github": {
-      "enabled": true,
-      "ttl_seconds": 300,
-      "timeout_seconds": 10
-    },
-    "memory": {
-      "enabled": true,
-      "ttl_seconds": 900,
-      "timeout_seconds": 10,
-      "url": "http://127.0.0.1:8000/mcp"
+  "allowed_hosts": ["127.0.0.1:*", "localhost:*", "<your-host>.<tailnet>.ts.net", "<your-host>.<tailnet>.ts.net:*"],
+  "public_url": "https://<your-host>.<tailnet>.ts.net",
+  "oauth_clients": {
+    "gemini-spark": {
+      "client_secret": "<generated-secret>",
+      "redirect_uri": "https://oauth-redirect.googleusercontent.com/r/<your-app-hash>",
+      "consumer": "gemini"
     }
   },
-  "allowed_hosts": [
-    "127.0.0.1:*",
-    "localhost:*",
-    "laptop-1s7mkkk6.tail694b01.ts.net",
-    "laptop-1s7mkkk6.tail694b01.ts.net:*"
-  ]
+  "channels": {
+    "github": { "enabled": true, "ttl_seconds": 300, "timeout_seconds": 10 },
+    "memory": { "enabled": true, "ttl_seconds": 900, "timeout_seconds": 10, "url": "http://127.0.0.1:8000/mcp", "limit": 5 }
+  }
 }

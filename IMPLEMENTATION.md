@@ -107,10 +107,6 @@ Must complete before any implementation code that depends on external interfaces
 
 ## Open Questions
 
----
-
-## Open Questions
-
 1. Which display-isolation substrate holds the structural constraint without Hyper-V elevation? — resolved by Phase 0
 2. Does LUMINOR index add value over a plain noVNC portal at this scale? — resolved by Phase 0
 3. What does consumer identity mean for a web surface (L5) that MCP alone cannot scope? — open, Phase 1+ design
