@@ -177,37 +177,34 @@ def build_http_server(
     client (DCR) or uses static credentials, authorizes against the operator's
     consent flow, and every issued access token mints into the consumer model.
     Config-registered static tokens verify as preauthorized grants."""
-    from mcp.server.auth.routes import ClientRegistrationOptions
-    from mcp.server.fastmcp.server import AuthSettings
     from mcp.server.transport_security import TransportSecuritySettings
 
-    auth_kwargs: dict[str, Any] = {}
-    if public_url:
-        clients = {
+    # The OAuth provider is created for the routes (discovery, register,
+    # authorize, token) but is NOT passed to FastMCP's auth integration —
+    # that would add BearerAuthMiddleware which rejects the rmcp client's
+    # initialize request (xAI's client doesn't attach the token after OAuth).
+    # Instead, tool-level _consumer_from_token enforces identity on every
+    # tool call; initialize (protocol negotiation) passes through unauthenticated.
+    provider = StaticOAuthProvider(
+        preauthorized=tokens,
+        runtime_tokens=tokens,
+        static_clients={
             client_id: {**spec, "consumer": spec.get("consumer", "gemini")}
             for client_id, spec in (oauth_clients or {}).items()
         }
-        provider = StaticOAuthProvider(
-            preauthorized=tokens, runtime_tokens=tokens, static_clients=clients
+        if public_url
+        else {},
+    )
+    for client_id, spec in (oauth_clients or {}).items():
+        provider._clients[client_id] = OAuthClientInformationFull(
+            client_id=client_id,
+            client_secret=spec["client_secret"],
+            redirect_uris=[spec["redirect_uri"]],
+            grant_types=["authorization_code", "refresh_token"],
+            response_types=["code"],
+            token_endpoint_auth_method="client_secret_post",
+            client_name="Gemini Spark (static)",
         )
-        for client_id, spec in clients.items():
-            provider._clients[client_id] = OAuthClientInformationFull(
-                client_id=client_id,
-                client_secret=spec["client_secret"],
-                redirect_uris=[spec["redirect_uri"]],
-                grant_types=["authorization_code", "refresh_token"],
-                response_types=["code"],
-                token_endpoint_auth_method="client_secret_post",
-                client_name="Gemini Spark (static)",
-            )
-        auth_kwargs = {
-            "auth_server_provider": provider,
-            "auth": AuthSettings(
-                issuer_url=AnyHttpUrl(public_url),
-                resource_server_url=AnyHttpUrl(public_url),
-                client_registration_options=ClientRegistrationOptions(enabled=True),
-            ),
-        }
 
     app: FastMCP = FastMCP(
         "ichnos",
@@ -220,7 +217,6 @@ def build_http_server(
             if allowed_hosts
             else None
         ),
-        **auth_kwargs,
     )
     _register_tools(
         app,
@@ -230,28 +226,52 @@ def build_http_server(
         resolve=lambda ctx: _consumer_from_token(ctx, tokens),
         ledger=ledger,
     )
+    app._oauth_provider = provider  # deployment wrapper reads this for OAuth routes
     return app
 
 
 def build_http_asgi(
     **kwargs: Any,
 ):
-    """Deployment wrapper: build_http_server + discovery aliases + health/diag routes.
-    Returns the ASGI Starlette app for uvicorn/deployment."""
+    """Deployment wrapper: build_http_server + discovery aliases + OAuth routes + health/diag.
+
+    Returns the ASGI Starlette app for uvicorn/deployment. The OAuth routes
+    (/.well-known/*, /register, /authorize, /token) are added manually — NOT via
+    FastMCP's auth integration (which would add BearerAuthMiddleware that rejects
+    xAI's rmcp client initialize). Tool-level auth enforces on every tool call."""
     app = build_http_server(**kwargs)
-    return _with_discovery_aliases(app, kwargs.get("public_url"))
+    provider = getattr(app, "_oauth_provider", None)
+    return _with_discovery_aliases(app, kwargs.get("public_url"), provider)
 
 
-def _with_discovery_aliases(app: FastMCP, public_url: str | None):
-    """Wrap the streamable-HTTP Starlette app with the discovery paths that
-    some MCP clients probe but the SDK's auth routes don't serve:
-    - /.well-known/openid-configuration (OpenID Connect discovery alias)
-    - /.well-known/oauth-protected-resource/mcp (RFC 9728 path-scoped metadata)
-    - /health (reachability probe that returns 200 without auth)"""
+def _with_discovery_aliases(
+    app: FastMCP, public_url: str | None, provider: StaticOAuthProvider | None = None
+):
+    """Wrap the streamable-HTTP Starlette app with discovery paths and OAuth routes.
+
+    The OAuth routes (/.well-known/*, /register, /authorize, /token) are added
+    manually because the FastMCP auth integration (which adds BearerAuthMiddleware)
+    is intentionally NOT used — it would reject the rmcp client's initialize
+    request, which xAI's connector sends without the Authorization header.
+    Tool-level _consumer_from_token enforces identity on every tool call."""
+    from mcp.server.auth.routes import create_auth_routes
     from starlette.responses import JSONResponse
     from starlette.routing import Route
 
     http_app = app.streamable_http_app()
+
+    if provider and public_url:
+        issuer_url = AnyHttpUrl(public_url)
+        from mcp.server.auth.routes import ClientRegistrationOptions
+
+        http_app.routes.extend(
+            create_auth_routes(
+                provider=provider,
+                issuer_url=issuer_url,
+                client_registration_options=ClientRegistrationOptions(enabled=True),
+            )
+        )
+
     if not public_url:
         return http_app
 
@@ -292,7 +312,6 @@ def _with_discovery_aliases(app: FastMCP, public_url: str | None):
                 "remote_addr": request.client.host if request.client else None,
                 "user_agent": request.headers.get("user-agent"),
                 "host": request.headers.get("host"),
-                "sni": request.url.scheme + "://" + (request.headers.get("host") or ""),
                 "method": request.method,
                 "path": request.url.path,
             }
@@ -310,4 +329,22 @@ def _with_discovery_aliases(app: FastMCP, public_url: str | None):
             Route("/diag", diag, methods=["GET"]),
         ]
     )
+    return http_app
+
+    # Some MCP clients (xAI's rmcp) complete the OAuth flow but do not attach
+    # the Authorization header to the MCP transport's initialize request. The
+    # BearerAuthBackend middleware rejects it with 401, and the connector
+    # reports "Auth required" and dies. The fix: strip the auth middleware so
+    # initialize passes through (protocol negotiation, not data access), while
+    # the tool-level _consumer_from_token still rejects unregistered consumers
+    # on every tools/call — the actual data operations remain protected.
+    # Declared tradeoff: the transport edge no longer rejects early; the
+    # rejection happens at the tool boundary instead.
+    http_app.user_middleware = [
+        mw
+        for mw in http_app.user_middleware
+        if "AuthenticationMiddleware" not in str(getattr(mw, "cls", ""))
+    ]
+    http_app.middleware_stack = http_app.build_middleware_stack()
+
     return http_app
