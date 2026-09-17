@@ -4,8 +4,10 @@ call time from the registry."""
 
 from __future__ import annotations
 
+import os
 import time
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from mcp.server.fastmcp import Context, FastMCP
@@ -194,6 +196,13 @@ def build_http_server(
         }
         if public_url
         else {},
+        persist_path=str(
+            Path(
+                os.environ.get(
+                    "CCE_OAUTH_STATE", Path.home() / ".config" / "ichnos" / "oauth_tokens.json"
+                )
+            )
+        ),
     )
     for client_id, spec in (oauth_clients or {}).items():
         provider._clients[client_id] = OAuthClientInformationFull(

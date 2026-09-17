@@ -13,6 +13,8 @@ tradeoff — persistence is a hardening step, not a correctness gap."""
 
 from __future__ import annotations
 
+import json
+import os
 import secrets
 import time
 from dataclasses import dataclass, field
@@ -63,6 +65,7 @@ class StaticOAuthProvider(OAuthAuthorizationServerProvider):
         preauthorized: dict[str, str],
         runtime_tokens: dict[str, str],
         static_clients: dict[str, Any] | None = None,
+        persist_path: str | None = None,
     ):
         self._preauthorized = preauthorized
         self._runtime_tokens = runtime_tokens
@@ -71,6 +74,9 @@ class StaticOAuthProvider(OAuthAuthorizationServerProvider):
         self._clients: dict[str, OAuthClientInformationFull] = {}
         self._codes: dict[str, IssuedCode] = {}
         self._tokens: dict[str, IssuedToken] = {}
+        self._persist_path = persist_path
+        if persist_path:
+            self._load_persisted()
 
     async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
         return self._clients.get(client_id)
@@ -141,9 +147,38 @@ class StaticOAuthProvider(OAuthAuthorizationServerProvider):
         )
         self._runtime_tokens[access] = consumer
         self._runtime_tokens[refresh] = consumer
+        self._persist()
         return OAuthToken(
             access_token=access, token_type="Bearer", expires_in=expires_in, refresh_token=refresh
         )
+
+    def _persist(self) -> None:
+        """Save issued tokens to disk so they survive engine restarts."""
+        if not self._persist_path:
+            return
+        data = {
+            t: {"client_id": i.client_id, "scopes": i.scopes, "expires_at": i.expires_at}
+            for t, i in self._tokens.items()
+        }
+        consumers = dict(self._runtime_tokens)
+        with open(self._persist_path, "w", encoding="utf-8") as f:
+            json.dump({"tokens": data, "consumers": consumers}, f)
+
+    def _load_persisted(self) -> None:
+        """Load issued tokens from disk (called at startup — tokens survive restarts)."""
+        if not self._persist_path or not os.path.exists(self._persist_path):
+            return
+        with open(self._persist_path, encoding="utf-8") as f:
+            data = json.load(f)
+        for t, info in data.get("tokens", {}).items():
+            self._tokens[t] = IssuedToken(
+                token=t,
+                client_id=info["client_id"],
+                scopes=info.get("scopes", []),
+                expires_at=info["expires_at"],
+            )
+        for t, consumer in data.get("consumers", {}).items():
+            self._runtime_tokens[t] = consumer
 
     async def exchange_authorization_code(
         self, client: OAuthClientInformationFull, authorization_code: AuthorizationCode
