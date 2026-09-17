@@ -20,12 +20,21 @@ def main() -> None:
 
 
 def main_http() -> None:
-    """HTTP mode: the engine serves many consumers over streamable-HTTP; identity via bearer token."""
+    """HTTP mode: the engine serves many consumers over streamable-HTTP; identity via bearer token.
+
+    build_http_app_from_config returns the deployment-wrapped ASGI app (Starlette with
+    discovery aliases + health/diag routes) — served by uvicorn directly."""
+    import uvicorn
+
     config_path = os.environ.get("CCE_CONFIG", DEFAULT_CONFIG_PATH)
     from cce_server.config import build_http_app_from_config
 
     app = build_http_app_from_config(config_path)
-    app.run(transport="streamable-http")
+    uvicorn.run(
+        app,
+        host=os.environ.get("CCE_HTTP_HOST", "127.0.0.1"),
+        port=int(os.environ.get("CCE_HTTP_PORT", "8001")),
+    )
 
 
 if __name__ == "__main__":
