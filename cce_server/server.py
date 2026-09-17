@@ -137,7 +137,7 @@ def build_server(
     from mcp.server.transport_security import TransportSecuritySettings
 
     app: FastMCP = FastMCP(
-        "ichnos-cce",
+        "ichnos",
         transport_security=(
             TransportSecuritySettings(
                 enable_dns_rebinding_protection=True, allowed_hosts=allowed_hosts
@@ -203,7 +203,7 @@ def build_http_server(
         }
 
     app: FastMCP = FastMCP(
-        "ichnos-cce",
+        "ichnos",
         host=host,
         port=port,
         transport_security=(
