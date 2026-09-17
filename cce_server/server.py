@@ -127,10 +127,22 @@ def build_server(
     channels: list[Channel],
     binding: str,
     memory_adapter: MemoryAdapter | None = None,
+    allowed_hosts: list[str] | None = None,
 ) -> FastMCP:
     """stdio mode: one process, one consumer — identity from the registration binding."""
     registry.resolve(binding)  # UnregisteredConsumer -> refuses to build
-    app: FastMCP = FastMCP("ichnos-cce")
+    from mcp.server.transport_security import TransportSecuritySettings
+
+    app: FastMCP = FastMCP(
+        "ichnos-cce",
+        transport_security=(
+            TransportSecuritySettings(
+                enable_dns_rebinding_protection=True, allowed_hosts=allowed_hosts
+            )
+            if allowed_hosts
+            else None
+        ),
+    )
     _register_tools(app, registry, channels, memory_adapter, resolve=lambda ctx: binding)
     return app
 
@@ -141,10 +153,26 @@ def build_http_server(
     channels: list[Channel],
     tokens: dict[str, str],
     memory_adapter: MemoryAdapter | None = None,
+    allowed_hosts: list[str] | None = None,
+    host: str = "127.0.0.1",
+    port: int = 8001,
 ) -> FastMCP:
     """HTTP mode: many consumers, one endpoint — identity resolved per request
     from the Authorization bearer token against the registration's token map."""
-    app: FastMCP = FastMCP("ichnos-cce")
+    from mcp.server.transport_security import TransportSecuritySettings
+
+    app: FastMCP = FastMCP(
+        "ichnos-cce",
+        host=host,
+        port=port,
+        transport_security=(
+            TransportSecuritySettings(
+                enable_dns_rebinding_protection=True, allowed_hosts=allowed_hosts
+            )
+            if allowed_hosts
+            else None
+        ),
+    )
     _register_tools(
         app,
         registry,

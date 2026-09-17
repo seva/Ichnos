@@ -25,11 +25,7 @@ def main_http() -> None:
     from cce_server.config import build_http_app_from_config
 
     app = build_http_app_from_config(config_path)
-    app.run(
-        transport="streamable-http",
-        host=os.environ.get("CCE_HTTP_HOST", "127.0.0.1"),
-        port=int(os.environ.get("CCE_HTTP_PORT", "8001")),
-    )
+    app.run(transport="streamable-http")
 
 
 if __name__ == "__main__":

@@ -1,8 +1,20 @@
 {
   "consumers": {
-    "opencode": { "scope": "full" },
-    "openclaw": { "scope": "full" },
-    "gemini": { "scope": "channels", "channels": ["memory"], "writable": ["memory"] }
+    "opencode": {
+      "scope": "full"
+    },
+    "openclaw": {
+      "scope": "full"
+    },
+    "gemini": {
+      "scope": "channels",
+      "channels": [
+        "memory"
+      ],
+      "writable": [
+        "memory"
+      ]
+    }
   },
   "tokens": {
     "<generated-token-1>": "opencode",
@@ -10,7 +22,22 @@
     "<generated-token-3>": "gemini"
   },
   "channels": {
-    "github": { "enabled": true, "ttl_seconds": 300, "timeout_seconds": 10 },
-    "memory": { "enabled": true, "ttl_seconds": 900, "timeout_seconds": 10, "url": "http://127.0.0.1:8000/mcp" }
-  }
+    "github": {
+      "enabled": true,
+      "ttl_seconds": 300,
+      "timeout_seconds": 10
+    },
+    "memory": {
+      "enabled": true,
+      "ttl_seconds": 900,
+      "timeout_seconds": 10,
+      "url": "http://127.0.0.1:8000/mcp"
+    }
+  },
+  "allowed_hosts": [
+    "127.0.0.1:*",
+    "localhost:*",
+    "laptop-1s7mkkk6.tail694b01.ts.net",
+    "laptop-1s7mkkk6.tail694b01.ts.net:*"
+  ]
 }

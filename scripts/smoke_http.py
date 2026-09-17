@@ -44,9 +44,7 @@ async def main() -> None:
                 tools = await session.list_tools()
                 print("tools:", sorted(t.name for t in tools.tools))
 
-                ctx = await session.call_tool(
-                    "get_context", {"query": "openclaw gateway restart"}
-                )
+                ctx = await session.call_tool("get_context", {"query": "openclaw gateway restart"})
                 data = ctx.structuredContent or json.loads(ctx.content[0].text)
                 mem = data["channels"].get("memory", {})
                 briefs = mem.get("data", [])

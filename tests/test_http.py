@@ -198,6 +198,46 @@ async def test_read_only_consumer_cannot_store():
         assert "write" in result.content[0].text.lower()
 
 
+async def test_funnel_hostname_accepted_when_allowed():
+    """The Funnel forwards the public Host header — allowed_hosts must admit it."""
+    from mcp.client.streamable_http import streamablehttp_client as client
+
+    http_app, _ = build_app(FakeMemoryCaller())
+    http_app2 = build_http_server(
+        registry=make_registry(),
+        channels=make_channels(),
+        tokens=TOKENS,
+        memory_adapter=MemoryAdapter(caller=FakeMemoryCaller()),
+        allowed_hosts=[
+            "127.0.0.1:*",
+            "localhost:*",
+            "laptop-1s7mkkk6.tail694b01.ts.net",  # portless https Host needs the bare name
+            "laptop-1s7mkkk6.tail694b01.ts.net:*",
+        ],
+    ).streamable_http_app()
+    host = "https://laptop-1s7mkkk6.tail694b01.ts.net"
+
+    def factory(headers=None, timeout=None, auth=None):
+        return httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=http_app2),
+            base_url=host,
+            headers=headers,
+        )
+
+    async with (
+        LifespanManager(http_app2),
+        client(
+            f"{host}/mcp",
+            headers={"Authorization": "Bearer gemini-token"},
+            httpx_client_factory=factory,
+        ) as (read, write, _),
+        ClientSession(read, write) as session,
+    ):
+        await session.initialize()
+        result = await session.call_tool("get_context", {})
+        assert not result.isError
+
+
 async def test_memory_tools_absent_without_adapter():
     app = build_http_server(
         registry=make_registry(), channels=make_channels(), tokens=TOKENS, memory_adapter=None

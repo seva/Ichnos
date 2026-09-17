@@ -146,5 +146,11 @@ def build_http_app_from_config(config_path: str | Path):
             caller=McpMemoryCaller(mem_spec.get("url", "http://127.0.0.1:8000/mcp"))
         )
     return build_http_server(
-        registry=registry, channels=channels, tokens=tokens, memory_adapter=memory_adapter
+        registry=registry,
+        channels=channels,
+        tokens=tokens,
+        memory_adapter=memory_adapter,
+        allowed_hosts=config.get("allowed_hosts"),
+        host=os.environ.get("CCE_HTTP_HOST", "127.0.0.1"),
+        port=int(os.environ.get("CCE_HTTP_PORT", "8001")),
     )
