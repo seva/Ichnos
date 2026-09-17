@@ -9,6 +9,7 @@ from collections.abc import Callable
 from typing import Any
 
 from mcp.server.fastmcp import Context, FastMCP
+from mcp.shared.auth import OAuthClientInformationFull
 from pydantic import AnyHttpUrl
 
 from cce_server.adapters.memory import MemoryAdapter
@@ -159,6 +160,7 @@ def build_http_server(
     host: str = "127.0.0.1",
     port: int = 8001,
     public_url: str | None = None,
+    oauth_clients: dict[str, dict[str, Any]] | None = None,
 ) -> FastMCP:
     """HTTP mode: many consumers, one endpoint — identity resolved per request
     from the Authorization bearer token against the registration's token map.
@@ -174,7 +176,23 @@ def build_http_server(
 
     auth_kwargs: dict[str, Any] = {}
     if public_url:
-        provider = StaticOAuthProvider(preauthorized=tokens, runtime_tokens=tokens)
+        clients = {
+            client_id: {**spec, "consumer": spec.get("consumer", "gemini")}
+            for client_id, spec in (oauth_clients or {}).items()
+        }
+        provider = StaticOAuthProvider(
+            preauthorized=tokens, runtime_tokens=tokens, static_clients=clients
+        )
+        for client_id, spec in clients.items():
+            provider._clients[client_id] = OAuthClientInformationFull(
+                client_id=client_id,
+                client_secret=spec["client_secret"],
+                redirect_uris=[spec["redirect_uri"]],
+                grant_types=["authorization_code", "refresh_token"],
+                response_types=["code"],
+                token_endpoint_auth_method="client_secret_post",
+                client_name="Gemini Spark (static)",
+            )
         auth_kwargs = {
             "auth_server_provider": provider,
             "auth": AuthSettings(

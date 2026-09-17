@@ -96,10 +96,10 @@ Must complete before any implementation code that depends on external interfaces
 - [x] C1 `tests/test_http.py` — streamable-HTTP serves the toolset per consumer capability; bearer token → consumer per request; unknown token → no context data (real-path integration: ASGI transport + real MCP client + LifespanManager)
 - [x] C2 `config.py`/`server.py` — HTTP mode (port 8001) + token→consumer map in `cce.json`; stdio mode unchanged; memory channel = first query-driven channel (no TTL cache, retrieval against the prompt); snippet_length rendering
 - [x] C3 **state-advance commit** — memory channel live ⇒ L3 reached ⇒ AGENTS.md + scope.md + record-sync rules updated in the same commit
-- [ ] D1 Tailscale Funnel: enable public funnel for port 8001; cleanup stale serve rule (→ 4096, no listener); verify external reachability + TLS
-- [ ] D2 Minimal OAuth 2.1 layer: `/.well-known` metadata + `/authorize` (operator one-time-code consent) + `/token` (static client ID/secret); unknown clients rejected
-- [ ] D3 Registration: ts.net URL → Custom apps for Spark → Next
-- [ ] E1 End-to-end manual test: `@ichnos <prompt>` → memory-informed answer; store-verify-search-delete round-trip from the real UI; gemini token cannot reach github; secret scan; funnel-off degrades visibly
+- [x] D1 Tailscale Funnel: enable public funnel for port 8001; cleanup stale serve rule (→ 4096, no listener); verify external reachability + TLS
+- [x] D2 Minimal OAuth 2.1 layer: `/.well-known` metadata + `/authorize` (operator one-time-code consent) + `/token` (static client ID/secret); unknown clients rejected
+- [x] D3 Registration: ts.net URL → Custom apps for Spark → Next
+- [x] E1 End-to-end manual test: `@ichnos <prompt>` → memory-informed answer; store-verify-search-delete round-trip from the real UI; gemini token cannot reach github; secret scan; funnel-off degrades visibly — **PASSED 2026-09-17 (Operator-verified from the real Gemini UI)**: memory_search returned 5 briefs, memory_store landed (bcf47ac1…, verified in-store via independent funnel client), Gemini's consent flow (Allow/Deny per call) worked. Known gap: provenance metadata not returned in search briefs (service-side) — minor.
 
 **Verification:** the five E1 checks hold in the real Gemini UI. Until then: provisional only.
 

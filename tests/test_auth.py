@@ -28,7 +28,9 @@ def make_client(client_id: str = "gemini-app") -> OAuthClientInformationFull:
 class FakeParams:
     def __init__(self):
         self.redirect_uri = "https://example.com/callback"
+        self.scopes = ["memory"]
         self.code_challenge = "test-challenge"
+        self.state = "client-state-123"
         self.scopes = ["memory"]
 
 
@@ -51,12 +53,12 @@ async def test_authorize_issues_code_exchange_mints_tokens_into_runtime_map():
     provider, client = provider_fully_registered(tokens)
     await provider.register_client(client)
     redirect = await provider.authorize(client, FakeParams())
-    assert redirect == "https://example.com/callback"
-
-    code = next(iter(provider._codes))
-    token = await provider.exchange_authorization_code(
-        client, await provider.load_authorization_code(client, code)
-    )
+    # the returned location must carry the code (and state) as query params
+    assert redirect.startswith("https://example.com/callback?code=")
+    assert "state=" in redirect
+    code_value = redirect.split("code=")[1].split("&")[0]
+    auth_code = await provider.load_authorization_code(client, code_value)
+    token = await provider.exchange_authorization_code(client, auth_code)
     assert token.access_token and token.refresh_token
     assert tokens[token.access_token] == "gemini"  # runtime mint — resolver sees the consumer
     assert tokens[token.refresh_token] == "gemini"
