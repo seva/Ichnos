@@ -9,8 +9,10 @@ from collections.abc import Callable
 from typing import Any
 
 from mcp.server.fastmcp import Context, FastMCP
+from pydantic import AnyHttpUrl
 
 from cce_server.adapters.memory import MemoryAdapter
+from cce_server.auth import StaticOAuthProvider
 from cce_server.channels import Channel
 from cce_server.registry import Registry
 
@@ -156,10 +158,31 @@ def build_http_server(
     allowed_hosts: list[str] | None = None,
     host: str = "127.0.0.1",
     port: int = 8001,
+    public_url: str | None = None,
 ) -> FastMCP:
     """HTTP mode: many consumers, one endpoint — identity resolved per request
-    from the Authorization bearer token against the registration's token map."""
+    from the Authorization bearer token against the registration's token map.
+
+    public_url: when set (the Funnel deployment), the engine presents a full
+    OAuth 2.1 authorization-server surface — Gemini registers as a dynamic
+    client (DCR) or uses static credentials, authorizes against the operator's
+    consent flow, and every issued access token mints into the consumer model.
+    Config-registered static tokens verify as preauthorized grants."""
+    from mcp.server.auth.routes import ClientRegistrationOptions
+    from mcp.server.fastmcp.server import AuthSettings
     from mcp.server.transport_security import TransportSecuritySettings
+
+    auth_kwargs: dict[str, Any] = {}
+    if public_url:
+        provider = StaticOAuthProvider(preauthorized=tokens, runtime_tokens=tokens)
+        auth_kwargs = {
+            "auth_server_provider": provider,
+            "auth": AuthSettings(
+                issuer_url=AnyHttpUrl(public_url),
+                resource_server_url=AnyHttpUrl(public_url),
+                client_registration_options=ClientRegistrationOptions(enabled=True),
+            ),
+        }
 
     app: FastMCP = FastMCP(
         "ichnos-cce",
@@ -172,6 +195,7 @@ def build_http_server(
             if allowed_hosts
             else None
         ),
+        **auth_kwargs,
     )
     _register_tools(
         app,

@@ -202,7 +202,6 @@ async def test_funnel_hostname_accepted_when_allowed():
     """The Funnel forwards the public Host header — allowed_hosts must admit it."""
     from mcp.client.streamable_http import streamablehttp_client as client
 
-    http_app, _ = build_app(FakeMemoryCaller())
     http_app2 = build_http_server(
         registry=make_registry(),
         channels=make_channels(),

@@ -151,6 +151,7 @@ def build_http_app_from_config(config_path: str | Path):
         tokens=tokens,
         memory_adapter=memory_adapter,
         allowed_hosts=config.get("allowed_hosts"),
+        public_url=config.get("public_url"),
         host=os.environ.get("CCE_HTTP_HOST", "127.0.0.1"),
         port=int(os.environ.get("CCE_HTTP_PORT", "8001")),
     )
