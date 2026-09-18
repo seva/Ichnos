@@ -105,6 +105,12 @@ def make_split_registry() -> Registry:
                     "writable": ["memory"],
                     "snippet_length": 200,
                 },
+                "web": {
+                    "scope": "channels",
+                    "channels": ["memory"],
+                    "writable": ["memory"],
+                    "snippet_length": 200,
+                },
             }
         }
     )

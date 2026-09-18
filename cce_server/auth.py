@@ -141,9 +141,9 @@ class StaticOAuthProvider(OAuthAuthorizationServerProvider):
         # treats the issued token exactly like a config-registered bearer token;
         # static_clients pin a client to a consumer, DCR clients default to gemini
         consumer = (
-            self._static_clients.get(client_id, {}).get("consumer", "gemini")
+            self._static_clients.get(client_id, {}).get("consumer", "web")
             if isinstance(self._static_clients.get(client_id), dict)
-            else self._static_clients.get(client_id, "gemini")
+            else self._static_clients.get(client_id, "web")
         )
         self._runtime_tokens[access] = consumer
         self._runtime_tokens[refresh] = consumer

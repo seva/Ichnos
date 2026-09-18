@@ -60,8 +60,8 @@ async def test_authorize_issues_code_exchange_mints_tokens_into_runtime_map():
     auth_code = await provider.load_authorization_code(client, code_value)
     token = await provider.exchange_authorization_code(client, auth_code)
     assert token.access_token and token.refresh_token
-    assert tokens[token.access_token] == "gemini"  # runtime mint — resolver sees the consumer
-    assert tokens[token.refresh_token] == "gemini"
+    assert tokens[token.access_token] == "web"  # runtime mint — DCR clients default to web
+    assert tokens[token.refresh_token] == "web"
 
 
 async def test_load_authorization_code_rejects_foreign_client():
@@ -102,7 +102,7 @@ async def test_refresh_flow_rotates_access_token():
     )
     rotated = await provider.exchange_refresh_token(client, token.refresh_token, None)
     assert rotated.access_token != token.access_token
-    assert tokens[rotated.access_token] == "gemini"
+    assert tokens[rotated.access_token] == "web"
 
 
 async def test_access_token_resolves_after_mint_for_tool_identity():
@@ -114,4 +114,4 @@ async def test_access_token_resolves_after_mint_for_tool_identity():
         client, await provider.load_authorization_code(client, next(iter(provider._codes)))
     )
     # the resolver contract: an issued access token resolves to its consumer
-    assert tokens.get(token.access_token) == "gemini"
+    assert tokens.get(token.access_token) == "web"
