@@ -10,7 +10,9 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from mcp.server.auth.routes import ClientRegistrationOptions
 from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.fastmcp.server import AuthSettings
 from mcp.shared.auth import OAuthClientInformationFull
 from pydantic import AnyHttpUrl
 
@@ -190,12 +192,7 @@ def build_http_server(
     Config-registered static tokens verify as preauthorized grants."""
     from mcp.server.transport_security import TransportSecuritySettings
 
-    # The OAuth provider is created for the routes (discovery, register,
-    # authorize, token) but is NOT passed to FastMCP's auth integration —
-    # that would add BearerAuthMiddleware which rejects the rmcp client's
-    # initialize request (xAI's client doesn't attach the token after OAuth).
-    # Instead, tool-level _consumer_from_token enforces identity on every
-    # tool call; initialize (protocol negotiation) passes through unauthenticated.
+    pre_approved = {cid for cid, spec in (oauth_clients or {}).items()}
     provider = StaticOAuthProvider(
         preauthorized=tokens,
         runtime_tokens=tokens,
@@ -212,6 +209,7 @@ def build_http_server(
                 )
             )
         ),
+        pre_approved_clients=pre_approved,
     )
     for client_id, spec in (oauth_clients or {}).items():
         provider._clients[client_id] = OAuthClientInformationFull(
@@ -224,6 +222,24 @@ def build_http_server(
             client_name="Gemini Spark (static)",
         )
 
+    # OAuth 2.1 auth integration: the BearerAuthMiddleware validates tokens on
+    # every request to /mcp. DCR-registered clients go through the pending-
+    # approval gate (no code issued until Owner approves). Static clients from
+    # config are pre-approved. This is the correct auth architecture per the
+    # MCP 2026-07-28 spec — the earlier stripping was wrong.
+    auth_kwargs: dict[str, Any] = {}
+    if public_url:
+        auth_kwargs = {
+            "auth_server_provider": provider,
+            "auth": AuthSettings(
+                issuer_url=AnyHttpUrl(public_url),
+                resource_server_url=AnyHttpUrl(public_url),
+                client_registration_options=ClientRegistrationOptions(
+                    enabled=True, valid_scopes=["memory"]
+                ),
+            ),
+        }
+
     app: FastMCP = FastMCP(
         "ichnos",
         host=host,
@@ -235,6 +251,7 @@ def build_http_server(
             if allowed_hosts
             else None
         ),
+        **auth_kwargs,
     )
     _register_tools(
         app,
@@ -251,12 +268,16 @@ def build_http_server(
 def build_http_asgi(
     **kwargs: Any,
 ):
-    """Deployment wrapper: build_http_server + discovery aliases + OAuth routes + health/diag.
+    """Deployment wrapper: build_http_server (with OAuth middleware) + discovery aliases + health/diag.
 
-    Returns the ASGI Starlette app for uvicorn/deployment. The OAuth routes
-    (/.well-known/*, /register, /authorize, /token) are added manually — NOT via
-    FastMCP's auth integration (which would add BearerAuthMiddleware that rejects
-    xAI's rmcp client initialize). Tool-level auth enforces on every tool call."""
+    Returns the ASGI Starlette app for uvicorn/deployment. The FastMCP auth
+    integration creates both the auth routes AND the BearerAuthMiddleware —
+    the correct architecture per the MCP 2026-07-28 spec. The earlier stripping
+    was the wrong response to the rmcp handshake failure."""
+    return build_http_asgi_inner(**kwargs)
+
+
+def build_http_asgi_inner(**kwargs: Any):
     app = build_http_server(**kwargs)
     provider = getattr(app, "_oauth_provider", None)
     return _with_discovery_aliases(app, kwargs.get("public_url"), provider)
@@ -265,30 +286,16 @@ def build_http_asgi(
 def _with_discovery_aliases(
     app: FastMCP, public_url: str | None, provider: StaticOAuthProvider | None = None
 ):
-    """Wrap the streamable-HTTP Starlette app with discovery paths and OAuth routes.
+    """Wrap the streamable-HTTP Starlette app with discovery paths, health and diag routes.
 
-    The OAuth routes (/.well-known/*, /register, /authorize, /token) are added
-    manually because the FastMCP auth integration (which adds BearerAuthMiddleware)
-    is intentionally NOT used — it would reject the rmcp client's initialize
-    request, which xAI's connector sends without the Authorization header.
-    Tool-level _consumer_from_token enforces identity on every tool call."""
-    from mcp.server.auth.routes import create_auth_routes
+    The OAuth routes AND the BearerAuthMiddleware are created by FastMCP's auth
+    integration (auth_server_provider + auth settings) — the correct architecture
+    per the MCP 2026-07-28 spec. This function adds only the alias paths the SDK
+    doesn't serve: OpenID discovery alias, path-scoped PRM, health, diag."""
     from starlette.responses import JSONResponse
     from starlette.routing import Route
 
     http_app = app.streamable_http_app()
-
-    if provider and public_url:
-        issuer_url = AnyHttpUrl(public_url)
-        from mcp.server.auth.routes import ClientRegistrationOptions
-
-        http_app.routes.extend(
-            create_auth_routes(
-                provider=provider,
-                issuer_url=issuer_url,
-                client_registration_options=ClientRegistrationOptions(enabled=True),
-            )
-        )
 
     if not public_url:
         return http_app
@@ -347,22 +354,4 @@ def _with_discovery_aliases(
             Route("/diag", diag, methods=["GET"]),
         ]
     )
-    return http_app
-
-    # Some MCP clients (xAI's rmcp) complete the OAuth flow but do not attach
-    # the Authorization header to the MCP transport's initialize request. The
-    # BearerAuthBackend middleware rejects it with 401, and the connector
-    # reports "Auth required" and dies. The fix: strip the auth middleware so
-    # initialize passes through (protocol negotiation, not data access), while
-    # the tool-level _consumer_from_token still rejects unregistered consumers
-    # on every tools/call — the actual data operations remain protected.
-    # Declared tradeoff: the transport edge no longer rejects early; the
-    # rejection happens at the tool boundary instead.
-    http_app.user_middleware = [
-        mw
-        for mw in http_app.user_middleware
-        if "AuthenticationMiddleware" not in str(getattr(mw, "cls", ""))
-    ]
-    http_app.middleware_stack = http_app.build_middleware_stack()
-
     return http_app

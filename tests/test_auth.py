@@ -1,4 +1,4 @@
-"""StaticOAuthProvider: DCR, authorize/exchange, refresh, preauthorized verification."""
+"""StaticOAuthProvider: DCR, authorize/exchange, refresh, preauthorized verification, persistence."""
 
 from __future__ import annotations
 
@@ -34,12 +34,12 @@ class FakeParams:
         self.scopes = ["memory"]
         self.code_challenge = "test-challenge"
         self.state = "client-state-123"
-        self.scopes = ["memory"]
 
 
 def provider_fully_registered(tokens: dict[str, str] | None = None):
     provider = make_provider(tokens)
     client = make_client()
+    provider.approve_client(client.client_id)
     return provider, client
 
 
@@ -51,20 +51,35 @@ async def test_dcr_register_and_get_client():
     assert got is client
 
 
-async def test_authorize_issues_code_exchange_mints_tokens_into_runtime_map():
-    tokens: dict[str, str] = {}
-    provider, client = provider_fully_registered(tokens)
+async def test_dcr_new_client_is_pending():
+    provider = make_provider()
+    client = make_client()
     await provider.register_client(client)
+    assert provider._client_status_for(client.client_id) == "pending"
+
+
+async def test_approved_client_can_authorize():
+    provider, client = provider_fully_registered()
     redirect = await provider.authorize(client, FakeParams())
-    # the returned location must carry the code (and state) as query params
     assert redirect.startswith("https://example.com/callback?code=")
     assert "state=" in redirect
-    code_value = redirect.split("code=")[1].split("&")[0]
-    auth_code = await provider.load_authorization_code(client, code_value)
-    token = await provider.exchange_authorization_code(client, auth_code)
-    assert token.access_token and token.refresh_token
-    assert tokens[token.access_token] == "web"  # runtime mint — DCR clients default to web
-    assert tokens[token.refresh_token] == "web"
+
+
+async def test_pending_client_cannot_authorize():
+    provider = make_provider()
+    client = make_client()
+    await provider.register_client(client)
+    with pytest.raises(PermissionError, match="pending approval"):
+        await provider.authorize(client, FakeParams())
+
+
+async def test_owner_can_approve_pending_client():
+    provider = make_provider()
+    client = make_client()
+    await provider.register_client(client)
+    assert provider._client_status_for(client.client_id) == "pending"
+    provider.approve_client(client.client_id)
+    assert provider._client_status_for(client.client_id) == "approved"
 
 
 async def test_load_authorization_code_rejects_foreign_client():
@@ -116,7 +131,6 @@ async def test_access_token_resolves_after_mint_for_tool_identity():
     token = await provider.exchange_authorization_code(
         client, await provider.load_authorization_code(client, next(iter(provider._codes)))
     )
-    # the resolver contract: an issued access token resolves to its consumer
     assert tokens.get(token.access_token) == "web"
 
 
@@ -131,11 +145,11 @@ async def test_persistence_round_trip(tmp_path):
     token = await provider.exchange_authorization_code(
         client, await provider.load_authorization_code(client, next(iter(provider._codes)))
     )
-    # the file exists and has the issued token
     assert os.path.exists(persist_path)
-    # a fresh provider (simulating engine restart) loads the persisted token
     reopened = StaticOAuthProvider(
-        preauthorized={"config-token": "openclaw"}, runtime_tokens=tokens, persist_path=persist_path
+        preauthorized={"config-token": "openclaw"},
+        runtime_tokens=tokens,
+        persist_path=persist_path,
     )
     access = await reopened.load_access_token(token.access_token)
     assert access is not None
@@ -143,13 +157,14 @@ async def test_persistence_round_trip(tmp_path):
 
 
 async def test_persistence_excludes_config_tokens(tmp_path):
-    """Only OAuth-minted tokens are persisted — config-registered static tokens must not appear."""
+    """Only OAuth-minted tokens are persisted - config-registered static tokens must not appear."""
     persist_path = str(tmp_path / "oauth_tokens.json")
     tokens: dict[str, str] = {"config-token": "openclaw"}
     provider = StaticOAuthProvider(
         preauthorized=tokens, runtime_tokens=tokens, persist_path=persist_path
     )
     client = make_client()
+    provider.approve_client(client.client_id)
     await provider.register_client(client)
     await provider.authorize(client, FakeParams())
     token = await provider.exchange_authorization_code(

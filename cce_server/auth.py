@@ -66,6 +66,7 @@ class StaticOAuthProvider(OAuthAuthorizationServerProvider):
         runtime_tokens: dict[str, str],
         static_clients: dict[str, Any] | None = None,
         persist_path: str | None = None,
+        pre_approved_clients: set[str] | None = None,
     ):
         self._preauthorized = preauthorized
         self._runtime_tokens = runtime_tokens
@@ -74,17 +75,44 @@ class StaticOAuthProvider(OAuthAuthorizationServerProvider):
         self._clients: dict[str, OAuthClientInformationFull] = {}
         self._codes: dict[str, IssuedCode] = {}
         self._tokens: dict[str, IssuedToken] = {}
+        self._client_status: dict[str, str] = {}  # client_id -> pending | approved | denied
         self._persist_path = persist_path
+        # pre-approved static clients (from config — Owner-sanctioned at registration)
+        self._pre_approved = pre_approved_clients or set()
         if persist_path:
             self._load_persisted()
+
+    def _client_status_for(self, client_id: str) -> str:
+        """Client status: approved (pre-registered or Owner-approved), pending (new DCR), denied."""
+        if client_id in self._pre_approved:
+            return "approved"
+        return self._client_status.get(client_id, "pending")
+
+    def approve_client(self, client_id: str) -> None:
+        """Owner action: promote a pending client to approved."""
+        self._client_status[client_id] = "approved"
+        self._persist()
+
+    def deny_client(self, client_id: str) -> None:
+        """Owner action: deny a pending client."""
+        self._client_status[client_id] = "denied"
+        self._persist()
 
     async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
         return self._clients.get(client_id)
 
     async def register_client(self, client_info: OAuthClientInformationFull) -> None:
         self._clients[client_info.client_id] = client_info
+        if client_info.client_id not in self._pre_approved:
+            self._client_status.setdefault(client_info.client_id, "pending")
+            self._persist()
 
     async def authorize(self, client: OAuthClientInformationFull, params: Any) -> str:
+        if self._client_status_for(client.client_id) == "pending":
+            # access gate: pending clients cannot get authorization codes
+            raise PermissionError(
+                f"access pending approval for client {client.client_id} ({client.client_name})"
+            )
         code = secrets.token_urlsafe(32)
         self._codes[code] = IssuedCode(
             code=code,
@@ -153,7 +181,7 @@ class StaticOAuthProvider(OAuthAuthorizationServerProvider):
         )
 
     def _persist(self) -> None:
-        """Save OAuth-issued tokens to disk so they survive engine restarts.
+        """Save OAuth-issued tokens and client status to disk so they survive engine restarts.
         Only issued (OAuth-minted) tokens are persisted — config-registered
         static bearer tokens live in cce.json and must not be duplicated here."""
         if not self._persist_path:
@@ -166,11 +194,17 @@ class StaticOAuthProvider(OAuthAuthorizationServerProvider):
         # which would duplicate the config-registered static bearer tokens from cce.json)
         issued_consumers = {t: self._runtime_tokens.get(t, "gemini") for t in self._tokens}
         with open(self._persist_path, "w", encoding="utf-8") as f:
-            json.dump({"tokens": data, "consumers": issued_consumers}, f)
+            json.dump(
+                {
+                    "tokens": data,
+                    "consumers": issued_consumers,
+                    "client_status": self._client_status,
+                },
+                f,
+            )
 
     def _load_persisted(self) -> None:
-        """Load issued tokens from disk (called at startup — tokens survive restarts).
-        Only OAuth-minted tokens are loaded; config tokens come from cce.json."""
+        """Load issued tokens and client status from disk (called at startup)."""
         if not self._persist_path or not os.path.exists(self._persist_path):
             return
         with open(self._persist_path, encoding="utf-8") as f:
@@ -184,6 +218,8 @@ class StaticOAuthProvider(OAuthAuthorizationServerProvider):
             )
         for t, consumer in data.get("consumers", {}).items():
             self._runtime_tokens[t] = consumer
+        for cid, status in data.get("client_status", {}).items():
+            self._client_status[cid] = status
 
     async def exchange_authorization_code(
         self, client: OAuthClientInformationFull, authorization_code: AuthorizationCode
