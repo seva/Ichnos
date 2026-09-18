@@ -24,10 +24,20 @@ Resolver = Callable[[Any], str]  # ctx -> consumer name; raises PermissionError 
 
 def _consumer_from_token(ctx: Context | None, tokens: dict[str, str]) -> str:
     req = ctx.request_context.request if ctx is not None else None
-    auth = req.headers.get("authorization", "") if req is not None else ""
-    consumer = tokens.get(auth.removeprefix("Bearer ").strip())
+    auth_header = req.headers.get("authorization", "") if req is not None else ""
+    token = auth_header.removeprefix("Bearer ").strip()
+    consumer = tokens.get(token)
     if consumer is None:
-        raise PermissionError("unregistered consumer")
+        # Some MCP clients (xAI rmcp) complete OAuth but do not attach the
+        # bearer token to MCP requests. These default to the "web" consumer —
+        # declared tradeoff: the funnel URL is the access gate.
+        import logging
+
+        logging.getLogger("ichnos.auth").info(
+            "no consumer resolved from auth header — defaulting to web | token=%s",
+            token[:12] + "..." if token else "(empty)",
+        )
+        return "web"
     return consumer
 
 
