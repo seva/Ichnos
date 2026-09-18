@@ -1,19 +1,20 @@
 # Consumer Registration — Interface Notes (Phase 0)
 
-**Status: claude-compatible registration path CONFIRMED (grok-research-mcp runs live via `claude mcp add-json`); OpenClaw gateway path MECHANISM EXISTS, UNPROVEN — `openclaw mcp set` is a real command, but no grok-research registration is observable in `openclaw.json` (mcp.servers contains only `memory`; the "grok" entries are an agent definition). Proving the gateway path is the L2 rung itself, a Phase 1 integration task. Scoping model and trigger semantics PROPOSED — the Phase 0 design Phase 1 implements; per-channel TTL values belong to `docs/channel-matrix.md` (next Phase 0 task, not yet written).**
+**Status: all three registration paths CONFIRMED (claude-compatible, OpenClaw gateway, Tailscale Funnel browser-consumer); the engine serves six consumers over two transports (stdio + streamable-HTTP) with capability scoping and OAuth 2.1 on the public surface; issued OAuth tokens persist across engine restarts (`~/.config/ichnos/oauth_tokens.json`); unauthenticated requests default to the `web` consumer (declared tradeoff — the Funnel URL is the access gate). Per-channel TTL values live in `docs/channel-matrix.md`.**
 
-_Last verified: 2026-09-15_
+_Last verified: 2026-09-17_
 
 ---
 
 ## Registration pattern
 
-Two consumer classes exist today; both registration paths are now exercised. Third: browser-consumer path (Tailscale Funnel → Gemini custom Connected App), planned Phase 4 (issue #4) — observed discrepancy recorded: Gemini's help article claims custom MCP apps are US-only, but the Custom apps UI is live on a Canadian account (observed 2026-09-16); documentation stale relative to rollout.
+Three consumer classes exist today; all three registration paths are exercised.
 
 | Path | Mechanism | Evidence |
 |---|---|---|
 | Claude-compatible runners (`claude`, opencode) | `claude mcp add-json <name> '<json>'` — full server config as JSON, including env vars; registered at user scope in `~/.claude.json` | **CONFIRMED** — `grok-research-mcp` runs live in Claude/opencode sessions via this path; the memory MCP service (`mcp-memory-service`, sqlite_vec backend) likewise; ichnos-cce registered via opencode.json (2026-09-15, live session verified) |
-| OpenClaw gateway | `openclaw mcp set <name> '<json>'` — gateway-native registration; hot-reload applies on save | **CONFIRMED** (2026-09-15) — ichnos-cce registered with `CCE_CONSUMER=openclaw`; gateway log: "config hot reload applied (mcp.servers.ichnos-cce)"; in-session tool call pending VixeYult's next session |
+| OpenClaw gateway | `openclaw mcp set <name> '<json>'` — gateway-native registration; hot-reload applies on save | **CONFIRMED** (2026-09-15) — ichnos-cce registered with `CCE_CONSUMER=openclaw`; gateway log: "config hot reload applied (mcp.servers.ichnos-cce)"; live 5-check test passed through VixeYult (2026-09-16) |
+| Browser surfaces (Gemini, Grok, Claude web UIs) | Tailscale Funnel public HTTPS → engine streamable-HTTP; OAuth 2.1 (DCR or static client credentials); unauthenticated requests default to the `web` consumer | **CONFIRMED** (2026-09-17) — Gemini custom Connected App live (`@Ichnos`, consumer=gemini); Grok connected via DCR (consumer=web — xAI's rmcp client does not attach OAuth tokens to MCP requests); Claude connected (consumer=web) |
 
 Practical notes:
 - `claude mcp add-json` is the correct form for servers that need env vars; `claude mcp add -e` mishandles the server name.
@@ -33,8 +34,8 @@ Consumer identity = the registration name (plus a per-registration scope grant).
 
 Rules:
 - Scope is granted at registration and changed only by the Owner (sanction class, recorded on the relevant issue).
-- An unregistered or unauthenticated connection is rejected at the transport layer (MCP auth failure / unknown tool) — it receives no context data under any scope level (terminal bound, `docs/scope.md`).
-- The server never trusts client-declared identity; identity comes from the transport's registration binding.
+- An unregistered connection receives no context data under any scope level (terminal bound, `docs/scope.md`). Unauthenticated requests (no Authorization header) default to the `web` consumer — declared tradeoff: the Funnel URL is the access gate.
+- The server never trusts client-declared identity; identity comes from the transport's registration binding (stdio) or the bearer token → consumer map (HTTP).
 
 ## "On prompt" trigger semantics (the tool contract)
 

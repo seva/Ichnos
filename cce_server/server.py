@@ -34,8 +34,7 @@ def _consumer_from_token(ctx: Context | None, tokens: dict[str, str]) -> str:
         import logging
 
         logging.getLogger("ichnos.auth").info(
-            "no consumer resolved from auth header — defaulting to web | token=%s",
-            token[:12] + "..." if token else "(empty)",
+            "no consumer resolved from auth header — defaulting to web"
         )
         return "web"
     return consumer

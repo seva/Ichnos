@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+import os
+
 import pytest
 from mcp.shared.auth import OAuthClientInformationFull
 
@@ -115,3 +118,56 @@ async def test_access_token_resolves_after_mint_for_tool_identity():
     )
     # the resolver contract: an issued access token resolves to its consumer
     assert tokens.get(token.access_token) == "web"
+
+
+async def test_persistence_round_trip(tmp_path):
+    """OAuth-issued tokens survive engine restarts: persist on mint, load on reopen."""
+    persist_path = str(tmp_path / "oauth_tokens.json")
+    tokens: dict[str, str] = {}
+    provider, client = provider_fully_registered(tokens)
+    provider._persist_path = persist_path
+    await provider.register_client(client)
+    await provider.authorize(client, FakeParams())
+    token = await provider.exchange_authorization_code(
+        client, await provider.load_authorization_code(client, next(iter(provider._codes)))
+    )
+    # the file exists and has the issued token
+    assert os.path.exists(persist_path)
+    # a fresh provider (simulating engine restart) loads the persisted token
+    reopened = StaticOAuthProvider(
+        preauthorized={"config-token": "openclaw"}, runtime_tokens=tokens, persist_path=persist_path
+    )
+    access = await reopened.load_access_token(token.access_token)
+    assert access is not None
+    assert access.client_id == client.client_id
+
+
+async def test_persistence_excludes_config_tokens(tmp_path):
+    """Only OAuth-minted tokens are persisted — config-registered static tokens must not appear."""
+    persist_path = str(tmp_path / "oauth_tokens.json")
+    tokens: dict[str, str] = {"config-token": "openclaw"}
+    provider = StaticOAuthProvider(
+        preauthorized=tokens, runtime_tokens=tokens, persist_path=persist_path
+    )
+    client = make_client()
+    await provider.register_client(client)
+    await provider.authorize(client, FakeParams())
+    token = await provider.exchange_authorization_code(
+        client, await provider.load_authorization_code(client, next(iter(provider._codes)))
+    )
+    persisted = json.loads(open(persist_path, encoding="utf-8").read())  # noqa: ASYNC230, SIM115
+    assert token.access_token in persisted["tokens"]
+    assert "config-token" not in persisted["tokens"]  # config token NOT duplicated
+
+
+async def test_load_refresh_token_returns_issued(tmp_path):
+    tokens: dict[str, str] = {}
+    provider, client = provider_fully_registered(tokens)
+    await provider.register_client(client)
+    await provider.authorize(client, FakeParams())
+    token = await provider.exchange_authorization_code(
+        client, await provider.load_authorization_code(client, next(iter(provider._codes)))
+    )
+    refresh = await provider.load_refresh_token(token.refresh_token)
+    assert refresh is not None
+    assert refresh.client_id == client.client_id

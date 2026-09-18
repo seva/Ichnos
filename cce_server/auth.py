@@ -153,19 +153,24 @@ class StaticOAuthProvider(OAuthAuthorizationServerProvider):
         )
 
     def _persist(self) -> None:
-        """Save issued tokens to disk so they survive engine restarts."""
+        """Save OAuth-issued tokens to disk so they survive engine restarts.
+        Only issued (OAuth-minted) tokens are persisted — config-registered
+        static bearer tokens live in cce.json and must not be duplicated here."""
         if not self._persist_path:
             return
         data = {
             t: {"client_id": i.client_id, "scopes": i.scopes, "expires_at": i.expires_at}
             for t, i in self._tokens.items()
         }
-        consumers = dict(self._runtime_tokens)
+        # persist only the consumer mapping for issued tokens (not the full runtime map,
+        # which would duplicate the config-registered static bearer tokens from cce.json)
+        issued_consumers = {t: self._runtime_tokens.get(t, "gemini") for t in self._tokens}
         with open(self._persist_path, "w", encoding="utf-8") as f:
-            json.dump({"tokens": data, "consumers": consumers}, f)
+            json.dump({"tokens": data, "consumers": issued_consumers}, f)
 
     def _load_persisted(self) -> None:
-        """Load issued tokens from disk (called at startup — tokens survive restarts)."""
+        """Load issued tokens from disk (called at startup — tokens survive restarts).
+        Only OAuth-minted tokens are loaded; config tokens come from cce.json."""
         if not self._persist_path or not os.path.exists(self._persist_path):
             return
         with open(self._persist_path, encoding="utf-8") as f:
@@ -221,7 +226,7 @@ class StaticOAuthProvider(OAuthAuthorizationServerProvider):
             token=token,
             client_id=issued.client_id,
             scopes=issued.scopes,
-            expires_at=issued.expires_at,
+            expires_at=int(issued.expires_at),
         )
 
     async def load_refresh_token(self, refresh_token: str):
