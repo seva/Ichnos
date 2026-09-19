@@ -103,6 +103,9 @@ class StaticOAuthProvider(OAuthAuthorizationServerProvider):
 
     async def register_client(self, client_info: OAuthClientInformationFull) -> None:
         self._clients[client_info.client_id] = client_info
+        # DCR client_name IS the platform identity — use it as the consumer directly
+        consumer = client_info.client_name or "web"
+        self._runtime_tokens[f"dcr:{client_info.client_id}"] = consumer
         if client_info.client_id not in self._pre_approved:
             self._client_status.setdefault(client_info.client_id, "pending")
             self._persist()
