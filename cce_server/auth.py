@@ -58,7 +58,23 @@ class StaticOAuthProvider(OAuthAuthorizationServerProvider):
     they verify at the transport edge exactly like OAuth-issued tokens.
     runtime_tokens: shared reference to the engine's token map — issued access
     tokens are minted into it so tool identity resolution treats them exactly
-    like config-registered tokens."""
+    like config-registered tokens.
+
+    DCR auto-approval: clients whose redirect_uri matches a known platform
+    pattern (the platform's own connector sets it — not the connecting operator)
+    are auto-approved with the platform's consumer identity. Unknown
+    redirect_uris stay pending (the Owner gate)."""
+
+    # platform DCR redirect_uri patterns → consumer identity
+    # (protocol-level facts about each platform's connector infrastructure)
+    PLATFORM_REDIRECT_PATTERNS: tuple[tuple[str, str], ...] = (
+        ("grok.com", "grok"),
+        ("x.ai", "grok"),
+        ("googleusercontent.com", "gemini"),
+        ("accountlinking.google.com", "gemini"),
+        ("claude.ai", "claude"),
+        ("claude.com", "claude"),
+    )
 
     def __init__(
         self,
@@ -76,6 +92,7 @@ class StaticOAuthProvider(OAuthAuthorizationServerProvider):
         self._codes: dict[str, IssuedCode] = {}
         self._tokens: dict[str, IssuedToken] = {}
         self._client_status: dict[str, str] = {}  # client_id -> pending | approved | denied
+        self._dcr_consumers: dict[str, str] = {}  # DCR client_id -> platform consumer
         self._persist_path = persist_path
         # pre-approved static clients (from config — Owner-sanctioned at registration)
         self._pre_approved = pre_approved_clients or set()
@@ -87,6 +104,16 @@ class StaticOAuthProvider(OAuthAuthorizationServerProvider):
         if client_id in self._pre_approved:
             return "approved"
         return self._client_status.get(client_id, "pending")
+
+    def _resolve_platform_consumer(self, redirect_uris: list[str]) -> str | None:
+        """Match redirect_uris against known platform patterns. Returns the
+        platform's consumer identity, or None (unknown → pending)."""
+        for uri in redirect_uris or []:
+            uri_lower = str(uri).lower()
+            for pattern, consumer in self.PLATFORM_REDIRECT_PATTERNS:
+                if pattern in uri_lower:
+                    return consumer
+        return None
 
     def approve_client(self, client_id: str) -> None:
         """Owner action: promote a pending client to approved."""
@@ -103,12 +130,16 @@ class StaticOAuthProvider(OAuthAuthorizationServerProvider):
 
     async def register_client(self, client_info: OAuthClientInformationFull) -> None:
         self._clients[client_info.client_id] = client_info
-        # DCR client_name IS the platform identity — use it as the consumer directly
-        consumer = client_info.client_name or "web"
-        self._runtime_tokens[f"dcr:{client_info.client_id}"] = consumer
-        if client_info.client_id not in self._pre_approved:
+        if client_info.client_id in self._pre_approved:
+            return
+        # platform resolution: known redirect_uri pattern → auto-approved + consumer pinned
+        platform_consumer = self._resolve_platform_consumer(client_info.redirect_uris)
+        if platform_consumer is not None:
+            self._client_status[client_info.client_id] = "approved"
+            self._dcr_consumers[client_info.client_id] = platform_consumer
+        else:
             self._client_status.setdefault(client_info.client_id, "pending")
-            self._persist()
+        self._persist()
 
     async def authorize(self, client: OAuthClientInformationFull, params: Any) -> str:
         if self._client_status_for(client.client_id) == "pending":
@@ -168,14 +199,14 @@ class StaticOAuthProvider(OAuthAuthorizationServerProvider):
             scopes=scopes,
             expires_at=time.time() + expires_in * 2,
         )
-        # mint into the engine's runtime token map so tool identity resolution
-        # treats the issued token exactly like a config-registered bearer token;
-        # static_clients pin a client to a consumer, DCR clients default to gemini
-        consumer = (
-            self._static_clients.get(client_id, {}).get("consumer", "web")
-            if isinstance(self._static_clients.get(client_id), dict)
-            else self._static_clients.get(client_id, "web")
-        )
+        # resolve the consumer: static_clients (config) first, then DCR platform resolution
+        spec = self._static_clients.get(client_id)
+        if isinstance(spec, dict):
+            consumer = spec.get("consumer", "web")
+        elif client_id in self._dcr_consumers:
+            consumer = self._dcr_consumers[client_id]
+        else:
+            consumer = self._static_clients.get(client_id, "web")
         self._runtime_tokens[access] = consumer
         self._runtime_tokens[refresh] = consumer
         self._persist()

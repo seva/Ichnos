@@ -186,3 +186,78 @@ async def test_load_refresh_token_returns_issued(tmp_path):
     refresh = await provider.load_refresh_token(token.refresh_token)
     assert refresh is not None
     assert refresh.client_id == client.client_id
+
+
+def make_client_with_redirect(
+    client_id: str, redirect_uri: str, client_name: str
+) -> OAuthClientInformationFull:
+    return OAuthClientInformationFull(
+        client_id=client_id,
+        redirect_uris=[redirect_uri],
+        grant_types=["authorization_code", "refresh_token"],
+        response_types=["code"],
+        token_endpoint_auth_method="none",
+        client_name=client_name,
+    )
+
+
+async def test_grok_dcr_auto_approved_by_redirect_uri():
+    """Grok's connector redirect_uri (grok.com) → auto-approved, consumer=grok."""
+    tokens: dict[str, str] = {}
+    provider = StaticOAuthProvider(preauthorized={}, runtime_tokens=tokens)
+    client = make_client_with_redirect(
+        "grok-dcr-1",
+        "https://grok.com/connectors-oauth-exchange-code/",
+        "Grok",
+    )
+    await provider.register_client(client)
+    assert provider._client_status_for(client.client_id) == "approved"
+    # token mints as grok
+    provider.approve_client(client.client_id)  # no-op if already approved
+    await provider.authorize(client, FakeParams())
+    token = await provider.exchange_authorization_code(
+        client, await provider.load_authorization_code(client, next(iter(provider._codes)))
+    )
+    assert tokens[token.access_token] == "grok"
+
+
+async def test_gemini_dcr_auto_approved_by_redirect_host():
+    tokens: dict[str, str] = {}
+    provider = StaticOAuthProvider(preauthorized={}, runtime_tokens=tokens)
+    client = make_client_with_redirect(
+        "gemini-dcr-1",
+        "https://oauth-redirect.googleusercontent.com/r/user_bound_custom-mcp-123",
+        "Google",
+    )
+    await provider.register_client(client)
+    assert provider._client_status_for(client.client_id) == "approved"
+    assert (
+        tokens.get(f"__dcr__{client.client_id}") == "gemini"
+        or provider._dcr_consumers.get(client.client_id) == "gemini"
+    )
+
+
+async def test_claude_dcr_auto_approved():
+    tokens: dict[str, str] = {}
+    provider = StaticOAuthProvider(preauthorized={}, runtime_tokens=tokens)
+    client = make_client_with_redirect(
+        "claude-dcr-1",
+        "https://claude.ai/api/mcp/auth_callback",
+        "Claude",
+    )
+    await provider.register_client(client)
+    assert provider._client_status_for(client.client_id) == "approved"
+
+
+async def test_unknown_redirect_uri_stays_pending():
+    """Unknown redirect_uri → pending → authorize refused (the Owner gate holds)."""
+    provider = make_provider()
+    client = make_client_with_redirect(
+        "evil-1",
+        "https://evil.com/callback",
+        "Not A Platform",
+    )
+    await provider.register_client(client)
+    assert provider._client_status_for(client.client_id) == "pending"
+    with pytest.raises(PermissionError, match="pending approval"):
+        await provider.authorize(client, FakeParams())
